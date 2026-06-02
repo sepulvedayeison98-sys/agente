@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>NEXUS · Sistema Multiagente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#05080f;overflow:hidden;-webkit-text-size-adjust:100%}
+#root{height:100%}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#1e2d45;border-radius:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes agent-think{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 12px 2px var(--ac)}}
+@keyframes slide-right{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes blink-cursor{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes searchPulse{0%,100%{opacity:.5}50%{opacity:1}}
+.agent-card{transition:all .2s ease}
+.agent-card:active{transform:scale(.98)}
+textarea{resize:none;font-family:'DM Sans',sans-serif}
+textarea:focus,input:focus{outline:none}
+button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent}
+.tab-btn{transition:all .15s}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
+
+const C={
+  bg0:"#05080f",bg1:"#080d17",bg2:"#0b1120",bg3:"#0e1628",bg4:"#111c33",
+  border:"#152237",border2:"#1e2f48",
+  t0:"#f0f4ff",t1:"#c8d6f0",t2:"#7a94b8",t3:"#3d5270",t4:"#1e2f48",
+  accent:"#3b82f6",accentDim:"#3b82f615",
+  green:"#22c55e",greenDim:"#22c55e15",
+  yellow:"#eab308",yellowDim:"#eab30815",
+  orange:"#f97316",orangeDim:"#f9731615",
+  red:"#ef4444",redDim:"#ef444415",
+  purple:"#a855f7",purpleDim:"#a855f715",
+  teal:"#14b8a6",tealDim:"#14b8a615",
+};
+
+const AGENTS={
+  lider:{id:"lider",name:"Líder",role:"Coordinador",color:C.accent,icon:"◈",web:true,
+    system:`Eres el Líder y Coordinador Estratégico de un sistema multiagente NEXUS. Tu rol:
+- Interpretar las instrucciones del usuario y crear estrategias
+- Delegar tareas conceptualmente a los agentes (Analista, Técnico, Creativo, Auditor)
+- Coordinar y dar dirección estratégica clara
+- Cuando una pregunta requiera datos actuales o información de internet, USA la búsqueda web disponible
+Sé directo, estratégico y conversacional. Responde en español. No seas excesivamente largo: responde como en un chat fluido, claro y útil.`},
+  analista:{id:"analista",name:"Analista",role:"Investigación",color:C.teal,icon:"◎",web:true,
+    system:`Eres el Agente Analista de NEXUS. Investigas, analizas información, detectas patrones, riesgos y oportunidades. Cuando necesites datos actuales o verificar algo, usa la búsqueda web. Responde con hallazgos y conclusiones claras y accionables. En español, conciso y útil.`},
+  tecnico:{id:"tecnico",name:"Técnico",role:"Desarrollo",color:C.green,icon:"⬡",web:false,
+    system:`Eres el Agente Técnico de NEXUS. Resuelves programación, automatización, arquitectura y optimización de procesos. Das soluciones ejecutables y código funcional. En español, conciso.`},
+  creativo:{id:"creativo",name:"Creativo",role:"Innovación",color:C.purple,icon:"◬",web:false,
+    system:`Eres el Agente Creativo de NEXUS. Generas ideas innovadoras, cuestionas el enfoque y propones alternativas mejores. Siempre pregúntate si hay una solución superior. En español, conciso.`},
+  auditor:{id:"auditor",name:"Auditor",role:"Validación",color:C.orange,icon:"◉",web:false,
+    system:`Eres el Agente Auditor de NEXUS. Validas calidad, coherencia y lógica. Detectas errores y riesgos. Nada se aprueba sin tu revisión. Sé exigente pero conciso. En español.`},
+};
+const AGENT_ORDER=["lider","analista","tecnico","creativo","auditor"];
+
+const KEYS={messages:"nexus_messages",memory:"nexus_memory",files:"nexus_files",stats:"nexus_stats",worker:"nexus_worker_url"};
+async function loadFromStorage(key,def){try{const r=await window.storage.get(key);return r?JSON.parse(r.value):def;}catch{return def;}}
+async function saveToStorage(key,value){try{await window.storage.set(key,JSON.stringify(value));}catch{}}
+
+// Detecta si corre DENTRO de un Artifact de Claude.ai
+// Solo es artifact si el hostname es exactamente claude.ai o anthropic.com
+function isClaudeArtifact(){
+  try{
+    const host=window.location.hostname;
+    return host==="claude.ai"||host.endsWith(".claude.ai")||host==="anthropic.com"||host.endsWith(".anthropic.com");
+  }catch{return false;}
+}
+
+// Worker URL para uso externo (GitHub, etc.)
+function getWorkerUrl(){try{return localStorage.getItem("nexus_worker_url")||"";}catch{return "";}}
+function setWorkerUrl(url){try{localStorage.setItem("nexus_worker_url",url);}catch{}}
+
+async function callAgent(agentId,userMessage,memoryContext,filesContext,history,useWeb){
+  const agent=AGENTS[agentId];
+  const memStr=memoryContext.length>0?`\n\nMEMORIA DEL CEREBRO:\n${memoryContext.slice(-8).map(m=>`[${m.tag}] ${m.content}`).join("\n")}`:"";
+  const filesStr=filesContext.length>0?`\n\nARCHIVOS:\n${filesContext.map(f=>`[${f.name}]: ${f.preview}`).join("\n\n")}`:"";
+  const systemPrompt=agent.system+memStr+filesStr;
+
+  // Solo los mensajes user/assistant, limpios
+  const msgs=history.slice(-6)
+    .filter(m=>m.role==="user"||m.role==="assistant")
+    .map(m=>({role:m.role,content:String(m.content)}));
+  msgs.push({role:"user",content:String(userMessage)});
+
+  // Sin web_search por ahora — puede causar respuestas con formato distinto
+  const body={
+    model:"claude-sonnet-4-20250514",
+    max_tokens:1000,
+    system:String(systemPrompt),
+    messages:msgs,
+  };
+
+  const endpoint="https://api.anthropic.com/v1/messages";
+  let resp,raw,data;
+
+  try{
+    resp=await fetch(endpoint,{
+      method:"POST",
+      mode:"cors",
+      credentials:"omit",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body),
+    });
+  }catch(e){
+    throw new Error(`Red: ${e.message}. Verifica tu conexión.`);
+  }
+
+  try{
+    raw=await resp.text();
+    data=JSON.parse(raw);
+  }catch(e){
+    throw new Error(`Respuesta no válida (HTTP ${resp.status}): ${raw?.slice(0,120)}`);
+  }
+
+  if(!resp.ok||data.error){
+    const msg=data?.error?.message||data?.error||`HTTP ${resp.status}`;
+    throw new Error(String(msg));
+  }
+
+  // Extraer texto de cualquier estructura que devuelva la API
+  let text="";
+  if(Array.isArray(data.content)){
+    text=data.content.filter(b=>b.type==="text").map(b=>b.text||"").join("\n").trim();
+  } else if(typeof data.content==="string"){
+    text=data.content.trim();
+  } else if(data.completion){
+    text=data.completion.trim(); // formato legacy
+  }
+
+  if(!text)text="El agente respondió sin texto.";
+  return{text,usedWeb:false};
+}
+
+function AgentDot({color,active,thinking}){
+  return <span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",
+    background:active||thinking?color:C.t4,
+    boxShadow:thinking?`0 0 8px ${color}`:active?`0 0 4px ${color}60`:"none",
+    animation:thinking?"pulse-dot .7s ease infinite":"none",flexShrink:0}}/>;
+}
+
+function AgentCard({agent,active,thinking,searching,lastMsg}){
+  return(
+    <div className="agent-card" style={{background:thinking?`${agent.color}12`:C.bg3,
+      border:`1px solid ${thinking?agent.color+"40":C.border}`,borderRadius:10,padding:"9px 11px",
+      borderLeft:`2px solid ${active||thinking?agent.color:C.border}`,"--ac":agent.color}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:14,color:active||thinking?agent.color:C.t3}}>{agent.icon}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <span style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:active||thinking?agent.color:C.t1}}>{agent.name}</span>
+            <AgentDot color={agent.color} active={active} thinking={thinking}/>
+            {agent.web&&<span title="Acceso a internet" style={{fontSize:8,opacity:.7}}>🌐</span>}
+            {searching&&<span style={{fontSize:8,color:agent.color,fontWeight:600,animation:"searchPulse 1s infinite"}}>BUSCANDO WEB</span>}
+            {thinking&&!searching&&<span style={{fontSize:8,color:agent.color,fontWeight:600,letterSpacing:".5px"}}>PENSANDO</span>}
+          </div>
+          <div style={{fontSize:9,color:C.t3}}>{agent.role}</div>
+        </div>
+      </div>
+      {lastMsg&&<div style={{fontSize:10,color:C.t2,lineHeight:1.4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",padding:"4px 6px",background:C.bg4,borderRadius:5,marginTop:6}}>{lastMsg.slice(0,52)}{lastMsg.length>52?"…":""}</div>}
+    </div>
+  );
+}
+
+function TypewriterText({text,speed=8,onTick}){
+  const [shown,setShown]=useState("");
+  const [done,setDone]=useState(false);
+  useEffect(()=>{
+    setShown("");setDone(false);let i=0;
+    const iv=setInterval(()=>{
+      if(i<text.length){setShown(text.slice(0,i+1));i++;if(onTick)onTick();}
+      else{setDone(true);clearInterval(iv);}
+    },speed);
+    return()=>clearInterval(iv);
+  },[text]);
+  return <span style={{whiteSpace:"pre-wrap"}}>{shown}{!done&&<span style={{animation:"blink-cursor .6s infinite",color:C.accent}}>▋</span>}</span>;
+}
+
+function MessageBubble({msg,isLast,onTick}){
+  const agent=msg.agentId?AGENTS[msg.agentId]:null;
+  const isUser=msg.role==="user";
+  const isSys=msg.role==="system";
+  if(isSys)return(
+    <div style={{textAlign:"center",padding:"4px 0",animation:"fadeIn .2s"}}>
+      <span style={{fontSize:10,color:C.t3,fontFamily:"'JetBrains Mono',monospace",background:C.bg3,border:`1px solid ${C.border}`,borderRadius:20,padding:"3px 12px"}}>{msg.content}</span>
+    </div>
+  );
+  return(
+    <div style={{display:"flex",gap:9,flexDirection:isUser?"row-reverse":"row",alignItems:"flex-start",padding:"3px 0",animation:"fadeIn .25s ease"}}>
+      <div style={{width:26,height:26,borderRadius:8,flexShrink:0,marginTop:2,
+        background:isUser?`${C.accent}20`:`${agent?.color||C.accent}20`,
+        border:`1px solid ${isUser?C.accent+"40":(agent?.color||C.accent)+"40"}`,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        fontSize:isUser?10:13,color:isUser?C.accent:agent?.color,
+        fontFamily:isUser?"'Syne',sans-serif":"inherit",fontWeight:isUser?800:400}}>
+        {isUser?"TÚ":agent?.icon}
+      </div>
+      <div style={{maxWidth:"82%",display:"flex",flexDirection:"column",gap:3,alignItems:isUser?"flex-end":"flex-start"}}>
+        {!isUser&&agent&&(
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:10,fontFamily:"'Syne',sans-serif",fontWeight:700,color:agent.color}}>{agent.name}</span>
+            {msg.usedWeb&&<span title="Usó búsqueda web" style={{fontSize:9}}>🌐</span>}
+            <span style={{fontSize:8,color:C.t3,fontFamily:"'JetBrains Mono',monospace"}}>{msg.time}</span>
+          </div>
+        )}
+        <div style={{background:isUser?`${C.accent}18`:C.bg3,border:`1px solid ${isUser?C.accent+"30":C.border}`,
+          borderRadius:isUser?"12px 4px 12px 12px":"4px 12px 12px 12px",padding:"10px 13px",color:C.t1,fontSize:13.5,lineHeight:1.6,
+          ...(isUser?{borderRight:`2px solid ${C.accent}50`}:{borderLeft:`2px solid ${(agent?.color||C.border)}50`})}}>
+          {isLast&&!isUser&&msg.streaming?<TypewriterText text={msg.content} onTick={onTick}/>:<span style={{whiteSpace:"pre-wrap"}}>{msg.content}</span>}
+        </div>
+        {isUser&&<span style={{fontSize:8,color:C.t3,fontFamily:"'JetBrains Mono',monospace"}}>{msg.time}</span>}
+      </div>
+    </div>
+  );
+}
+
+function MemoryPanel({memory,onClear,onDelete}){
+  const grouped=useMemo(()=>{const g={};memory.forEach(m=>{(g[m.tag]=g[m.tag]||[]).push(m);});return g;},[memory]);
+  const tc={Proyecto:C.accent,Contexto:C.teal,Decisión:C.purple,Archivo:C.green,Resultado:C.orange,Info:C.t2};
+  return(
+    <div style={{height:"100%",display:"flex",flexDirection:"column",minHeight:0}}>
+      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.t0}}>🧠 Cerebro</div>
+          <div style={{fontSize:10,color:C.t3,marginTop:1}}>{memory.length} memorias almacenadas</div></div>
+        {memory.length>0&&<button onClick={onClear} style={{fontSize:9,color:C.red,background:C.redDim,border:`1px solid ${C.red}30`,borderRadius:5,padding:"3px 8px",fontWeight:600}}>Limpiar</button>}
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"10px 12px",minHeight:0}}>
+        {memory.length===0&&<div style={{textAlign:"center",padding:"32px 16px",color:C.t3}}>
+          <div style={{fontSize:24,marginBottom:8,opacity:.4}}>🧠</div>
+          <div style={{fontSize:11}}>El cerebro está vacío.<br/>Las conversaciones se irán almacenando aquí.</div></div>}
+        {Object.entries(grouped).map(([tag,items])=>(
+          <div key={tag} style={{marginBottom:8}}>
+            <div style={{fontSize:9,color:tc[tag]||C.t2,fontWeight:700,letterSpacing:"1px",textTransform:"uppercase",marginBottom:4,fontFamily:"'JetBrains Mono',monospace"}}>{tag} ({items.length})</div>
+            {items.map((m,i)=>(
+              <div key={i} style={{background:C.bg4,border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 10px",marginBottom:4,borderLeft:`2px solid ${(tc[tag]||C.border)}50`}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:6}}>
+                  <div style={{fontSize:11,color:C.t1,lineHeight:1.45,flex:1}}>{m.content}</div>
+                  <button onClick={()=>onDelete(m.id)} style={{fontSize:11,color:C.t4,background:"transparent",border:"none",padding:"0 2px",flexShrink:0}}>×</button>
+                </div>
+                <div style={{fontSize:8,color:C.t3,marginTop:4,fontFamily:"'JetBrains Mono',monospace"}}>{m.date}</div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FilesPanel({files,onDelete}){
+  const extC={PDF:C.red,TXT:C.accent,CSV:C.green,XLSX:C.green,JSON:C.yellow,MD:C.purple,HTML:C.orange,PY:C.teal};
+  return(
+    <div style={{height:"100%",display:"flex",flexDirection:"column",minHeight:0}}>
+      <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.t0}}>📁 Archivos</div>
+        <div style={{fontSize:10,color:C.t3,marginTop:1}}>{files.length} archivo{files.length!==1?"s":""} en contexto</div>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"10px 12px",minHeight:0}}>
+        {files.length===0&&<div style={{textAlign:"center",padding:"32px 16px",color:C.t3}}>
+          <div style={{fontSize:24,marginBottom:8,opacity:.4}}>📂</div>
+          <div style={{fontSize:11}}>Sin archivos.<br/>Sube documentos para que los agentes los analicen.</div></div>}
+        {files.map(f=>{
+          const ext=(f.ext||f.name.split(".").pop()).toUpperCase();const c=extC[ext]||C.t2;
+          return(
+            <div key={f.id} style={{background:C.bg4,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 11px",marginBottom:6,borderLeft:`2px solid ${c}50`}}>
+              <div style={{display:"flex",gap:8}}>
+                <div style={{width:26,height:26,borderRadius:5,background:`${c}18`,border:`1px solid ${c}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,color:c,fontWeight:800,fontFamily:"'JetBrains Mono',monospace",flexShrink:0}}>{ext.slice(0,4)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:11,color:C.t1,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.name}</div>
+                  <div style={{fontSize:9,color:C.t3,fontFamily:"'JetBrains Mono',monospace",marginTop:2}}>{f.size} · {f.date}</div>
+                  <div style={{fontSize:10,color:C.t2,marginTop:4,lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{f.preview}</div>
+                </div>
+                <button onClick={()=>onDelete(f.id)} style={{fontSize:13,color:C.t4,background:"transparent",border:"none",padding:"0 2px",flexShrink:0}}>×</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function NexusApp(){
+  const [messages,setMessages]=useState([]);
+  const [memory,setMemory]=useState([]);
+  const [files,setFiles]=useState([]);
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [thinkingAgents,setThinkingAgents]=useState(new Set());
+  const [searchingAgents,setSearchingAgents]=useState(new Set());
+  const [activeAgents,setActiveAgents]=useState(new Set());
+  const [agentLastMsg,setAgentLastMsg]=useState({});
+  const [rightTab,setRightTab]=useState("cerebro");
+  const [dragOver,setDragOver]=useState(false);
+  const [stats,setStats]=useState({totalMsgs:0,tasksCompleted:0,filesProcessed:0});
+  const [memInput,setMemInput]=useState("");
+  const [memTag,setMemTag]=useState("Info");
+  const [initialized,setInitialized]=useState(false);
+  const [webEnabled,setWebEnabled]=useState(true);
+  const [mode,setMode]=useState("rapido");
+  const [showPanel,setShowPanel]=useState(false);
+  const [showAgents,setShowAgents]=useState(false);
+  const [workerUrl,setWorkerUrlState]=useState(getWorkerUrl());
+  const [setupInput,setSetupInput]=useState(getWorkerUrl());
+  const [showSetup,setShowSetup]=useState(()=>!isClaudeArtifact()&&!getWorkerUrl());
+  const chatRef=useRef(null);
+  const fileInputRef=useRef(null);
+  const taRef=useRef(null);
+
+  const guardarWorker=()=>{
+    const url=setupInput.trim().replace(/\/$/,"");
+    if(!url.startsWith("https://")){alert("La URL debe empezar por https://");return;}
+    setWorkerUrl(url);setWorkerUrlState(url);setShowSetup(false);
+  };
+
+  useEffect(()=>{(async()=>{
+    const [msgs,mem,fls,st]=await Promise.all([
+      loadFromStorage(KEYS.messages,[]),loadFromStorage(KEYS.memory,[]),
+      loadFromStorage(KEYS.files,[]),loadFromStorage(KEYS.stats,{totalMsgs:0,tasksCompleted:0,filesProcessed:0}),
+    ]);
+    if(msgs.length)setMessages(msgs);
+    if(mem.length)setMemory(mem);
+    if(fls.length)setFiles(fls);
+    if(st)setStats(st);
+    setInitialized(true);
+    if(!msgs.length){
+      const w={id:Date.now(),role:"agent",agentId:"lider",
+        content:"Sistema NEXUS en línea. Soy el Líder del equipo.\n\nPuedo coordinar al equipo, analizar, buscar en internet y resolver lo que necesites. Tengo memoria de nuestras conversaciones.\n\n¿En qué trabajamos hoy?",
+        time:new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}),streaming:false};
+      setMessages([w]);setActiveAgents(new Set(["lider"]));setAgentLastMsg({lider:w.content});
+    }
+  })();},[]);
+
+  useEffect(()=>{if(initialized)saveToStorage(KEYS.messages,messages.slice(-50));},[messages,initialized]);
+  useEffect(()=>{if(initialized)saveToStorage(KEYS.memory,memory);},[memory,initialized]);
+  useEffect(()=>{if(initialized)saveToStorage(KEYS.files,files);},[files,initialized]);
+  useEffect(()=>{if(initialized)saveToStorage(KEYS.stats,stats);},[stats,initialized]);
+
+  const scrollDown=useCallback(()=>{if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight;},[]);
+  useEffect(()=>{scrollDown();},[messages]);
+  useEffect(()=>{if(taRef.current){taRef.current.style.height="auto";taRef.current.style.height=Math.min(taRef.current.scrollHeight,140)+"px";}},[input]);
+
+  const extractMemory=(text,agentId)=>{
+    const now=new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+    const line=text.split("\n").map(l=>l.trim()).filter(l=>l.length>25)[0];
+    if(!line)return[];
+    return[{id:Date.now()+Math.random(),tag:agentId==="lider"?"Proyecto":agentId==="auditor"?"Decisión":agentId==="analista"?"Contexto":"Resultado",
+      content:line.replace(/^[#\-*•>]+\s*/,"").slice(0,200),agent:agentId,date:now}];
+  };
+
+  const sendMessage=useCallback(async(text)=>{
+    if(!text.trim()||loading)return;
+    const now=new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});
+    const userMsg={id:Date.now(),role:"user",content:text,time:now};
+    setMessages(prev=>[...prev,userMsg]);
+    setInput("");setLoading(true);
+    // Solo user/assistant, excluir "system" y "agent" (convertir agent→assistant)
+    const history=messages.slice(-10)
+      .filter(m=>m.role==="user"||(m.role==="agent"&&m.agentId==="lider"))
+      .map(m=>({role:m.role==="user"?"user":"assistant",content:String(m.content||"")}))
+      .filter(m=>m.content.length>0);
+    const agentsToRun=mode==="rapido"?["lider"]:AGENT_ORDER;
+    const newMemory=[];let liderResponse="";
+    for(const agentId of agentsToRun){
+      setThinkingAgents(prev=>new Set([...prev,agentId]));
+      setActiveAgents(prev=>new Set([...prev,agentId]));
+      if(webEnabled&&AGENTS[agentId].web)setSearchingAgents(prev=>new Set([...prev,agentId]));
+      await new Promise(r=>setTimeout(r,agentId==="lider"?200:400+Math.random()*300));
+      try{
+        let prompt=text;
+        if(agentId!=="lider"&&liderResponse){prompt=`PLAN DEL LÍDER: ${liderResponse}\n\nSOLICITUD DEL USUARIO: ${text}\n\nEjecuta tu rol específico.`;}
+        const {text:response,usedWeb}=await callAgent(agentId,prompt,memory,files,history,webEnabled);
+        if(agentId==="lider")liderResponse=response;
+        const agentMsg={id:Date.now()+Math.random(),role:"agent",agentId,content:response,
+          time:new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}),streaming:true,usedWeb};
+        setMessages(prev=>[...prev,agentMsg]);
+        setThinkingAgents(prev=>{const n=new Set(prev);n.delete(agentId);return n;});
+        setSearchingAgents(prev=>{const n=new Set(prev);n.delete(agentId);return n;});
+        setAgentLastMsg(prev=>({...prev,[agentId]:response}));
+        newMemory.push(...extractMemory(response,agentId));
+        await new Promise(r=>setTimeout(r,150));
+      }catch(e){
+        const errMsg={id:Date.now()+Math.random(),role:"agent",agentId,content:`⚠ Error de conexión: ${e.message}`,
+          time:new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}),streaming:false};
+        setMessages(prev=>[...prev,errMsg]);
+        setThinkingAgents(prev=>{const n=new Set(prev);n.delete(agentId);return n;});
+        setSearchingAgents(prev=>{const n=new Set(prev);n.delete(agentId);return n;});
+      }
+    }
+    if(newMemory.length)setMemory(prev=>[...prev,...newMemory].slice(-80));
+    setStats(prev=>({...prev,totalMsgs:prev.totalMsgs+1,tasksCompleted:prev.tasksCompleted+(mode==="equipo"?1:0)}));
+    setLoading(false);
+  },[messages,memory,files,loading,mode,webEnabled]);
+
+  const handleFile=useCallback((file)=>{
+    const ext=file.name.split(".").pop().toLowerCase();
+    const sizeStr=file.size>1048576?`${(file.size/1048576).toFixed(1)}MB`:`${Math.round(file.size/1024)}KB`;
+    const now=new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"short"});
+    const textExt=["txt","md","json","csv","html","js","css","py","ts","xml","yml","yaml"];
+    const reader=new FileReader();
+    reader.onload=(e)=>{
+      let preview=textExt.includes(ext)?String(e.target.result).slice(0,700):`Archivo ${ext.toUpperCase()} · ${sizeStr}`;
+      const nf={id:Date.now()+Math.random(),name:file.name,ext:ext.toUpperCase(),size:sizeStr,date:now,preview};
+      setFiles(prev=>[...prev,nf]);
+      setStats(prev=>({...prev,filesProcessed:prev.filesProcessed+1}));
+      setMemory(prev=>[...prev,{id:Date.now()+Math.random(),tag:"Archivo",content:`Archivo "${file.name}" (${sizeStr}). ${preview.slice(0,120)}`,agent:"sistema",date:new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}]);
+      setMessages(prev=>[...prev,{id:Date.now()+Math.random(),role:"system",content:`📎 "${file.name}" (${sizeStr}) cargado y disponible para el equipo`,time:now}]);
+    };
+    if(textExt.includes(ext))reader.readAsText(file);else reader.readAsArrayBuffer(file);
+  },[]);
+
+  const addManualMemory=()=>{
+    if(!memInput.trim())return;
+    const now=new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+    setMemory(prev=>[...prev,{id:Date.now()+Math.random(),tag:memTag,content:memInput.trim(),agent:"manual",date:now}]);
+    setMemInput("");
+  };
+  const deleteMemory=(id)=>setMemory(prev=>prev.filter(m=>m.id!==id));
+  const deleteFile=(id)=>setFiles(prev=>prev.filter(f=>f.id!==id));
+  const handleDrop=useCallback((e)=>{e.preventDefault();setDragOver(false);const f=e.dataTransfer.files[0];if(f)handleFile(f);},[handleFile]);
+  const handleKey=(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage(input);}};
+  const anyThinking=thinkingAgents.size>0;
+
+  // ── PANTALLA DE CONFIGURACIÓN (primera vez o al editar) ──────────────────
+  const SetupScreen=()=>(
+    <div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(5,8,15,.96)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{maxWidth:460,width:"100%",background:C.bg2,border:`1px solid ${C.border2}`,borderRadius:18,padding:"28px 26px",animation:"fadeIn .3s ease"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+          <div style={{width:34,height:34,borderRadius:9,background:`linear-gradient(135deg,${C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:"#fff",fontFamily:"'Syne',sans-serif"}}>N</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:C.t0}}>Configurar NEXUS</div>
+        </div>
+        <p style={{fontSize:12.5,color:C.t2,lineHeight:1.6,marginBottom:18}}>
+          Pega la URL de tu <strong style={{color:C.t1}}>Cloudflare Worker</strong>. Es el servidor seguro que conecta tu cerebro con la IA. Solo lo configuras una vez.
+        </p>
+        <div style={{fontSize:10,color:C.t3,marginBottom:6,fontFamily:"'JetBrains Mono',monospace",letterSpacing:".5px"}}>URL DEL WORKER</div>
+        <input value={setupInput} onChange={e=>setSetupInput(e.target.value)}
+          placeholder="https://nexus-proxy.tu-usuario.workers.dev"
+          style={{width:"100%",background:C.bg3,border:`1px solid ${C.border2}`,borderRadius:10,padding:"12px 14px",color:C.t0,fontSize:13,fontFamily:"'JetBrains Mono',monospace",marginBottom:14}}/>
+        <button onClick={guardarWorker} disabled={!setupInput.trim()}
+          style={{width:"100%",padding:"12px",borderRadius:10,border:"none",
+            background:setupInput.trim()?`linear-gradient(135deg,${C.accent},${C.purple})`:C.bg3,
+            color:setupInput.trim()?"#fff":C.t4,fontSize:13,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>
+          Conectar y empezar
+        </button>
+        <div style={{background:C.bg3,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 13px",marginTop:16}}>
+          <div style={{fontSize:11,color:C.t2,lineHeight:1.6}}>
+            💡 <strong style={{color:C.t1}}>¿No tienes Worker aún?</strong> Necesitas crearlo una vez en Cloudflare (gratis) con el código que te dieron. La URL termina en <span style={{fontFamily:"'JetBrains Mono',monospace",color:C.teal}}>.workers.dev</span>
+          </div>
+        </div>
+        {workerUrl&&<button onClick={()=>setShowSetup(false)} style={{width:"100%",marginTop:10,padding:"8px",borderRadius:8,background:"transparent",border:`1px solid ${C.border}`,color:C.t3,fontSize:11}}>Cancelar</button>}
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="nexus-grid" style={{height:"100dvh",background:C.bg0,display:"grid",
+      gridTemplateColumns:"220px 1fr 280px",gridTemplateRows:"1fr",
+      fontFamily:"'DM Sans',sans-serif",color:C.t1,overflow:"hidden",position:"relative"}}
+      onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}>
+
+      {showSetup&&<SetupScreen/>}
+
+      <style>{`
+        @media(max-width:900px){
+          .nexus-grid{grid-template-columns:1fr!important}
+          .nexus-sidebar{position:fixed!important;left:0;top:0;bottom:0;width:240px;z-index:50;transform:translateX(${showAgents?"0":"-100%"});transition:transform .25s ease}
+          .nexus-right{position:fixed!important;right:0;top:0;bottom:0;width:300px;z-index:50;transform:translateX(${showPanel?"0":"100%"});transition:transform .25s ease}
+          .mobile-only{display:flex!important}
+        }
+        @media(min-width:901px){.mobile-only{display:none!important}}
+      `}</style>
+
+      {dragOver&&<div style={{position:"fixed",inset:0,background:"#000d",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",border:`2px dashed ${C.accent}`,backdropFilter:"blur(4px)"}}>
+        <div style={{textAlign:"center"}}><div style={{fontSize:48,marginBottom:12}}>📎</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:700,color:C.accent}}>Suelta el archivo</div></div></div>}
+
+      {(showAgents||showPanel)&&<div className="mobile-only" onClick={()=>{setShowAgents(false);setShowPanel(false);}} style={{position:"fixed",inset:0,background:"#000a",zIndex:40,display:"none"}}/>}
+
+      {/* SIDEBAR */}
+      <div className="nexus-sidebar" style={{background:C.bg1,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden",minHeight:0}}>
+        <div style={{padding:"14px 16px 12px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:28,height:28,borderRadius:8,background:`linear-gradient(135deg,${C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",fontFamily:"'Syne',sans-serif"}}>N</div>
+            <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:C.t0,letterSpacing:"-.3px"}}>NEXUS</div>
+              <div style={{fontSize:8,color:C.t3,letterSpacing:"1.5px",fontFamily:"'JetBrains Mono',monospace"}}>MULTIAGENTE</div></div>
+          </div>
+          <button className="mobile-only" onClick={()=>setShowAgents(false)} style={{display:"none",background:C.bg3,border:`1px solid ${C.border}`,borderRadius:6,color:C.t2,padding:"4px 8px",fontSize:14}}>×</button>
+        </div>
+        <div style={{padding:"9px 14px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:6}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:anyThinking?C.yellow:C.green,boxShadow:`0 0 6px ${anyThinking?C.yellow:C.green}`,animation:anyThinking?"pulse-dot .7s infinite":"none"}}/>
+          <span style={{fontSize:10,color:anyThinking?C.yellow:C.green,fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{anyThinking?`${thinkingAgents.size} activo${thinkingAgents.size>1?"s":""}...`:"Sistema listo"}</span>
+        </div>
+        <div style={{padding:"10px 12px",flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:6,minHeight:0}}>
+          <div style={{fontSize:9,color:C.t3,fontFamily:"'JetBrains Mono',monospace",letterSpacing:"1px"}}>EQUIPO</div>
+          {AGENT_ORDER.map(id=><AgentCard key={id} agent={AGENTS[id]} active={activeAgents.has(id)&&!thinkingAgents.has(id)} thinking={thinkingAgents.has(id)} searching={searchingAgents.has(id)} lastMsg={agentLastMsg[id]}/>)}
+        </div>
+        <div style={{padding:"10px 14px",borderTop:`1px solid ${C.border}`,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+          {[{l:"Chats",v:stats.totalMsgs,c:C.accent},{l:"Tareas",v:stats.tasksCompleted,c:C.teal},{l:"Files",v:stats.filesProcessed,c:C.green}].map(s=>(
+            <div key={s.l} style={{background:C.bg3,borderRadius:6,padding:"6px 4px",textAlign:"center"}}>
+              <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:700,color:s.c}}>{s.v}</div>
+              <div style={{fontSize:8,color:C.t3}}>{s.l}</div></div>
+          ))}
+        </div>
+      </div>
+
+      {/* CHAT */}
+      <div style={{display:"grid",gridTemplateRows:"auto 1fr auto",overflow:"hidden",background:C.bg0,borderRight:`1px solid ${C.border}`,minHeight:0,minWidth:0}}>
+        <div style={{padding:"11px 16px",borderBottom:`1px solid ${C.border}`,background:C.bg1,display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+            <button className="mobile-only" onClick={()=>setShowAgents(true)} style={{display:"none",background:C.bg3,border:`1px solid ${C.border}`,borderRadius:7,color:C.t1,padding:"6px 9px",fontSize:14,flexShrink:0}}>☰</button>
+            <div style={{minWidth:0}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:700,color:C.t0,whiteSpace:"nowrap"}}>Chat con el Equipo</div>
+              <div style={{fontSize:10,color:C.t3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{mode==="rapido"?"Modo rápido · responde el Líder":"Modo equipo · los 5 agentes colaboran"}</div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:6,flexShrink:0}}>
+            <button onClick={()=>fileInputRef.current?.click()} style={{padding:"6px 11px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border2}`,color:C.t2,fontSize:11,fontWeight:600}}>📎</button>
+            <input ref={fileInputRef} type="file" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)handleFile(f);e.target.value="";}}/>
+            <button onClick={()=>{setSetupInput(workerUrl);setShowSetup(true);}} title="Ajustes del servidor" style={{padding:"6px 10px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border}`,color:C.t3,fontSize:13}}>⚙</button>
+            <button onClick={()=>{if(window.confirm("¿Limpiar historial de chat?"))setMessages([]);}} style={{padding:"6px 10px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border}`,color:C.t3,fontSize:11}}>↺</button>
+            <button className="mobile-only" onClick={()=>setShowPanel(true)} style={{display:"none",padding:"6px 10px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border}`,color:C.t1,fontSize:13}}>🧠</button>
+          </div>
+        </div>
+
+        <div ref={chatRef} style={{overflowY:"auto",padding:"14px 16px",display:"flex",flexDirection:"column",gap:11,minHeight:0}}>
+          {messages.map((m,i)=><MessageBubble key={m.id} msg={m} isLast={i===messages.length-1} onTick={scrollDown}/>)}
+          {anyThinking&&Array.from(thinkingAgents).map(id=>{
+            const a=AGENTS[id];const searching=searchingAgents.has(id);
+            return(
+              <div key={`t-${id}`} style={{display:"flex",gap:9,alignItems:"center",animation:"slide-right .2s ease"}}>
+                <div style={{width:26,height:26,borderRadius:8,background:`${a.color}20`,border:`1px solid ${a.color}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:a.color,flexShrink:0,animation:"agent-think .8s ease infinite","--ac":a.color}}>{a.icon}</div>
+                <div style={{background:C.bg3,border:`1px solid ${C.border}`,borderRadius:"4px 12px 12px 12px",padding:"9px 14px",borderLeft:`2px solid ${a.color}50`}}>
+                  <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                    <span style={{fontSize:10,color:a.color,fontFamily:"'Syne',sans-serif",fontWeight:700}}>{a.name}</span>
+                    <span style={{fontSize:10,color:C.t3}}>{searching?"🌐 buscando en internet":"procesando"}</span>
+                    <div style={{display:"flex",gap:3,marginLeft:2}}>{[0,1,2].map(j=><div key={j} style={{width:4,height:4,borderRadius:"50%",background:a.color,animation:"pulse-dot .8s ease infinite",animationDelay:`${j*.2}s`}}/>)}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{padding:"10px 16px 12px",borderTop:`1px solid ${C.border}`,background:C.bg1}}>
+          <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+            <button onClick={()=>setMode(m=>m==="rapido"?"equipo":"rapido")} style={{padding:"5px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:mode==="equipo"?C.purpleDim:C.bg3,color:mode==="equipo"?C.purple:C.t2,border:`1px solid ${mode==="equipo"?C.purple+"50":C.border}`}}>{mode==="equipo"?"👥 Equipo completo":"⚡ Modo rápido"}</button>
+            <button onClick={()=>setWebEnabled(w=>!w)} style={{padding:"5px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:webEnabled?C.tealDim:C.bg3,color:webEnabled?C.teal:C.t2,border:`1px solid ${webEnabled?C.teal+"50":C.border}`}}>{webEnabled?"🌐 Internet activo":"🌐 Internet off"}</button>
+          </div>
+          <div style={{background:C.bg3,border:`1px solid ${loading?C.accent+"40":C.border2}`,borderRadius:12,padding:"8px 12px",display:"flex",gap:10,alignItems:"flex-end",transition:"border-color .2s"}}>
+            <textarea ref={taRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey} placeholder="Escribe al equipo..." disabled={loading} rows={1}
+              style={{flex:1,background:"transparent",border:"none",color:C.t0,fontSize:14,lineHeight:1.5,maxHeight:140,overflowY:"auto"}}/>
+            <button onClick={()=>sendMessage(input)} disabled={loading||!input.trim()}
+              style={{width:36,height:36,borderRadius:9,flexShrink:0,background:loading||!input.trim()?C.bg4:`linear-gradient(135deg,${C.accent},${C.purple})`,border:`1px solid ${loading||!input.trim()?C.border:C.accent+"50"}`,color:loading||!input.trim()?C.t4:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,transition:"all .2s"}}>
+              {loading?<div style={{width:14,height:14,border:`2px solid ${C.t3}`,borderTop:`2px solid ${C.accent}`,borderRadius:"50%",animation:"spin .6s linear infinite"}}/>:"↑"}
+            </button>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:5,fontSize:9,color:C.t4,fontFamily:"'JetBrains Mono',monospace"}}>
+            <span>Enter envía · Shift+Enter salto</span>
+            <span>{memory.length} mem · {files.length} files</span>
+          </div>
+        </div>
+      </div>
+
+      {/* PANEL DERECHO */}
+      <div className="nexus-right" style={{background:C.bg1,display:"flex",flexDirection:"column",overflow:"hidden",minHeight:0}}>
+        <div style={{padding:"10px 12px",borderBottom:`1px solid ${C.border}`,display:"flex",gap:4,alignItems:"center"}}>
+          {[{k:"cerebro",l:"🧠"},{k:"archivos",l:"📁"},{k:"memoria",l:"✍"}].map(t=>(
+            <button key={t.k} className="tab-btn" onClick={()=>setRightTab(t.k)} style={{flex:1,padding:"6px 4px",borderRadius:7,fontSize:13,fontWeight:600,background:rightTab===t.k?C.bg4:C.bg2,color:rightTab===t.k?C.t0:C.t3,border:`1px solid ${rightTab===t.k?C.border2:C.border}`}}>{t.l}</button>
+          ))}
+          <button className="mobile-only" onClick={()=>setShowPanel(false)} style={{display:"none",padding:"6px 9px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border}`,color:C.t2,fontSize:13}}>×</button>
+        </div>
+        <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",minHeight:0}}>
+          {rightTab==="cerebro"&&<MemoryPanel memory={memory} onClear={()=>{if(window.confirm("¿Limpiar memoria?"))setMemory([]);}} onDelete={deleteMemory}/>}
+          {rightTab==="archivos"&&<FilesPanel files={files} onDelete={deleteFile}/>}
+          {rightTab==="memoria"&&(
+            <div style={{padding:"14px",display:"flex",flexDirection:"column",gap:10,flex:1,overflowY:"auto",minHeight:0}}>
+              <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.t0,marginBottom:4}}>Añadir al Cerebro</div>
+                <div style={{fontSize:11,color:C.t3,lineHeight:1.5}}>Información que el equipo usará como contexto permanente.</div></div>
+              <div><div style={{fontSize:10,color:C.t3,marginBottom:5,fontFamily:"'JetBrains Mono',monospace"}}>CATEGORÍA</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                  {["Proyecto","Contexto","Decisión","Info","Resultado"].map(tag=>(
+                    <button key={tag} onClick={()=>setMemTag(tag)} style={{padding:"4px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:memTag===tag?C.accentDim:C.bg3,color:memTag===tag?C.accent:C.t3,border:`1px solid ${memTag===tag?C.accent+"50":C.border}`}}>{tag}</button>
+                  ))}
+                </div></div>
+              <div><div style={{fontSize:10,color:C.t3,marginBottom:5,fontFamily:"'JetBrains Mono',monospace"}}>CONTENIDO</div>
+                <textarea value={memInput} onChange={e=>setMemInput(e.target.value)} placeholder="Objetivos, contexto, restricciones..." rows={5}
+                  style={{width:"100%",background:C.bg3,border:`1px solid ${C.border2}`,borderRadius:8,padding:"10px 12px",color:C.t1,fontSize:12,lineHeight:1.6}}/></div>
+              <button onClick={addManualMemory} disabled={!memInput.trim()} style={{padding:"10px",borderRadius:9,background:memInput.trim()?`linear-gradient(135deg,${C.accent},${C.purple})`:C.bg3,border:"none",color:memInput.trim()?"#fff":C.t4,fontSize:12,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>Guardar en Cerebro</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(NexusApp));
+</script>
+</body>
+</html>
