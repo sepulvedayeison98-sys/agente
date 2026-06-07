@@ -59,13 +59,22 @@ const C={
   teal:"#14b8a6",tealDim:"#14b8a615",
 };
 
+// ── Models ────────────────────────────────────────────────────────────────────
+// FIX: modelo configurable — antes hardcodeado como claude-sonnet-4-5
+const MODELS=[
+  {id:"claude-haiku-4-5-20251001",label:"Haiku",desc:"Rápido · Económico",icon:"⚡",color:C.teal},
+  {id:"claude-sonnet-4-6",label:"Sonnet",desc:"Balanceado",icon:"◎",color:C.accent},
+  {id:"claude-opus-4-8",label:"Opus",desc:"Máximo poder",icon:"◈",color:C.purple},
+];
+const DEFAULT_MODEL="claude-sonnet-4-6";
+
 // ── Agents ────────────────────────────────────────────────────────────────────
 const AGENTS={
   lider:{id:"lider",name:"Líder",role:"Coordinador",color:C.accent,icon:"◈",web:true,
     system:`Eres el Líder y Coordinador Estratégico de un sistema multiagente NEXUS. Tu rol:
-- Interpretar las instrucciones del usuario y crear estrategias
+- Interpretar las instrucciones del usuario y crear estrategias claras
 - Delegar tareas conceptualmente a los agentes (Analista, Técnico, Creativo, Auditor)
-- Coordinar y dar dirección estratégica clara
+- Coordinar y dar dirección estratégica de alto nivel
 - Cuando una pregunta requiera datos actuales, USA la búsqueda web disponible
 Sé directo, estratégico y conversacional. Responde en español. Responde como en un chat fluido, claro y útil.`},
   analista:{id:"analista",name:"Analista",role:"Investigación",color:C.teal,icon:"◎",web:true,
@@ -75,7 +84,7 @@ Sé directo, estratégico y conversacional. Responde en español. Responde como 
   creativo:{id:"creativo",name:"Creativo",role:"Innovación",color:C.purple,icon:"◬",web:false,
     system:`Eres el Agente Creativo de NEXUS. Generas ideas innovadoras y propones alternativas mejores. Siempre pregúntate si hay una solución superior. En español, conciso.`},
   auditor:{id:"auditor",name:"Auditor",role:"Validación",color:C.orange,icon:"◉",web:false,
-    system:`Eres el Agente Auditor de NEXUS. Validas calidad, coherencia y lógica. Detectas errores y riesgos. Sé exigente pero conciso. En español.`},
+    system:`Eres el Agente Auditor de NEXUS. Validas calidad, coherencia y lógica del trabajo del equipo completo. Detectas errores, contradicciones y riesgos entre las propuestas. Sé exigente pero conciso. En español.`},
 };
 const AGENT_ORDER=["lider","analista","tecnico","creativo","auditor"];
 
@@ -83,9 +92,7 @@ const AGENT_ORDER=["lider","analista","tecnico","creativo","auditor"];
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d;}catch{return d;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function lsDel(k){try{localStorage.removeItem(k);}catch{}}
-// Profile-scoped keys
 function pk(pid,k){return`nx_${pid}_${k}`;}
-// Session-scoped keys
 function sk(pid,sid,k){return`nx_${pid}_s_${sid}_${k}`;}
 
 const G_PROFILES="nx_profiles";
@@ -95,9 +102,18 @@ function isClaudeArtifact(){
   try{const h=window.location.hostname;return h==="claude.ai"||h.endsWith(".claude.ai")||h==="anthropic.com"||h.endsWith(".anthropic.com");}catch{return false;}
 }
 
+// ── Error formatter ───────────────────────────────────────────────────────────
+function formatError(e){
+  if(e.message.includes("NetworkError")||e.message.includes("Failed to fetch"))
+    return"Sin conexión al servidor. Verifica que el Worker esté activo (⚙).";
+  return`Error: ${e.message.slice(0,200)}`;
+}
+
 // ── API call ──────────────────────────────────────────────────────────────────
-async function callAgent(agentId,userMessage,memoryCtx,filesCtx,history,useWeb,workerUrl){
+// FIX: añadido parámetro model, max_tokens aumentado a 4096, web search sin restricción de workerUrl
+async function callAgent(agentId,userMessage,memoryCtx,filesCtx,history,useWeb,workerUrl,model){
   const agent=AGENTS[agentId];
+  const mdl=model||DEFAULT_MODEL;
   const memStr=memoryCtx.length>0?`\n\nMEMORIA:\n${memoryCtx.slice(-8).map(m=>`[${m.tag}] ${m.content}`).join("\n")}`:"";
   const filesStr=filesCtx.length>0?`\n\nARCHIVOS:\n${filesCtx.map(f=>`[${f.name}]: ${f.preview}`).join("\n\n")}`:"";
   const systemPrompt=agent.system+memStr+filesStr;
@@ -107,8 +123,10 @@ async function callAgent(agentId,userMessage,memoryCtx,filesCtx,history,useWeb,w
     .map(m=>({role:m.role,content:String(m.content)}));
   msgs.push({role:"user",content:String(userMessage)});
 
-  const body={model:"claude-sonnet-4-5",max_tokens:1200,system:String(systemPrompt),messages:msgs};
-  if(useWeb&&agent.web&&workerUrl){
+  const body={model:mdl,max_tokens:4096,system:String(systemPrompt),messages:msgs};
+
+  // FIX: búsqueda web habilitada tanto con workerUrl como en modo Claude Artifact
+  if(useWeb&&agent.web&&(workerUrl||isClaudeArtifact())){
     body.tools=[{type:"web_search_20250305",name:"web_search",max_uses:3}];
   }
 
@@ -149,7 +167,7 @@ function CodeBlock({lang,code}){
     <div style={{margin:"8px 0",borderRadius:8,overflow:"hidden",border:`1px solid ${C.border2}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 12px",background:C.bg4,borderBottom:`1px solid ${C.border}`}}>
         <span style={{fontSize:9,color:C.t3,fontFamily:"'JetBrains Mono',monospace",letterSpacing:".5px"}}>{lang||"código"}</span>
-        <button onClick={copy} style={{fontSize:9,color:copied?C.green:C.t3,background:"transparent",border:"none",fontFamily:"'DM Sans',sans-serif",fontWeight:600,padding:"2px 6px",borderRadius:4,background:copied?C.greenDim:"transparent"}}>
+        <button onClick={copy} style={{fontSize:9,color:copied?C.green:C.t3,border:"none",fontFamily:"'DM Sans',sans-serif",fontWeight:600,padding:"2px 6px",borderRadius:4,background:copied?C.greenDim:"transparent"}}>
           {copied?"✓ copiado":"copiar"}
         </button>
       </div>
@@ -186,7 +204,6 @@ function renderMd(text){
   let i=0,k=0;
   while(i<lines.length){
     const line=lines[i];
-    // Fenced code block
     if(line.startsWith("```")){
       const lang=line.slice(3).trim();
       const codeLines=[];
@@ -245,17 +262,19 @@ function AgentCard({agent,active,thinking,searching,lastMsg}){
   );
 }
 
+// FIX: TypewriterText con limpieza correcta de intervalo
 function TypewriterText({text,speed=7,onTick,onDone}){
   const [shown,setShown]=useState("");
   const [done,setDone]=useState(false);
   useEffect(()=>{
-    setShown("");setDone(false);let i=0;
+    setShown("");setDone(false);let i=0;let cancelled=false;
     const iv=setInterval(()=>{
+      if(cancelled)return;
       if(i<text.length){setShown(text.slice(0,i+1));i++;if(onTick)onTick();}
-      else{setDone(true);clearInterval(iv);if(onDone)onDone();}
+      else{setDone(true);clearInterval(iv);if(onDone&&!cancelled)onDone();}
     },speed);
-    return()=>clearInterval(iv);
-  },[text]);
+    return()=>{cancelled=true;clearInterval(iv);};
+  },[text,speed]);
   return <div style={{whiteSpace:"pre-wrap"}}>{shown}{!done&&<span style={{animation:"blink-cursor .6s infinite",color:C.accent}}>▋</span>}</div>;
 }
 
@@ -414,7 +433,6 @@ function ProfileSelector({profiles,onSelect,onCreate,onDelete}){
   return(
     <div style={{position:"fixed",inset:0,background:C.bg0,display:"flex",alignItems:"center",justifyContent:"center",padding:20,zIndex:9999,animation:"fadeIn .3s"}}>
       <div style={{maxWidth:440,width:"100%"}}>
-        {/* Logo */}
         <div style={{textAlign:"center",marginBottom:28}}>
           <div style={{width:52,height:52,borderRadius:14,background:`linear-gradient(135deg,${C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:"#fff",fontFamily:"'Syne',sans-serif",margin:"0 auto 12px",boxShadow:`0 0 32px ${C.accent}40`}}>N</div>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:C.t0,letterSpacing:"-.5px"}}>NEXUS</div>
@@ -423,7 +441,6 @@ function ProfileSelector({profiles,onSelect,onCreate,onDelete}){
           </div>
         </div>
 
-        {/* Profile list */}
         {!creating&&(
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
             {profiles.map(p=>(
@@ -453,7 +470,6 @@ function ProfileSelector({profiles,onSelect,onCreate,onDelete}){
           </button>
         )}
 
-        {/* Create form */}
         {creating&&(
           <div style={{background:C.bg2,border:`1px solid ${C.border2}`,borderRadius:14,padding:"18px",animation:"fadeInScale .2s"}}>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:12,fontWeight:700,color:C.t0,marginBottom:14,letterSpacing:".5px"}}>NUEVO PERFIL</div>
@@ -517,6 +533,58 @@ function ProfileSelector({profiles,onSelect,onCreate,onDelete}){
   );
 }
 
+// ── SetupScreen — FIX: extraído como componente independiente (antes estaba definido dentro del render de NexusApp, causando re-montajes en cada render)
+function SetupScreen({profile,workerUrl,setupInput,setSetupInput,model,onModelChange,onSave,onCancel}){
+  const mdl=MODELS.find(m=>m.id===model)||MODELS[1];
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(5,8,15,.96)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{maxWidth:440,width:"100%",background:C.bg2,border:`1px solid ${C.border2}`,borderRadius:18,padding:"26px 24px",animation:"fadeIn .3s ease"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+          <span style={{fontSize:20}}>{profile.emoji}</span>
+          <div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:C.t0}}>Configuración</div>
+            <div style={{fontSize:10,color:profile.color,marginTop:1}}>{profile.name}</div>
+          </div>
+        </div>
+
+        {/* Model selector */}
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:9,color:C.t3,marginBottom:8,fontFamily:"'JetBrains Mono',monospace",letterSpacing:".5px"}}>MODELO DE IA</div>
+          <div style={{display:"flex",gap:6}}>
+            {MODELS.map(m=>(
+              <button key={m.id} onClick={()=>onModelChange(m.id)}
+                style={{flex:1,padding:"9px 6px",borderRadius:9,border:`1px solid ${model===m.id?m.color+"60":C.border}`,
+                  background:model===m.id?`${m.color}15`:C.bg3,transition:"all .15s"}}>
+                <div style={{fontSize:14,marginBottom:3}}>{m.icon}</div>
+                <div style={{fontSize:10,fontWeight:700,color:model===m.id?m.color:C.t2,fontFamily:"'Syne',sans-serif"}}>{m.label}</div>
+                <div style={{fontSize:8,color:C.t3,marginTop:1}}>{m.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{fontSize:9,color:C.t3,marginBottom:6,fontFamily:"'JetBrains Mono',monospace",letterSpacing:".5px"}}>CLOUDFLARE WORKER URL</div>
+        <p style={{fontSize:11,color:C.t2,lineHeight:1.6,marginBottom:10}}>
+          Proxy para cada perfil. Maneja la autenticación con la API.
+        </p>
+        <input value={setupInput} onChange={e=>setSetupInput(e.target.value)}
+          placeholder="https://nexus-proxy.tu-usuario.workers.dev"
+          style={{width:"100%",background:C.bg3,border:`1px solid ${C.border2}`,borderRadius:9,padding:"11px 13px",color:C.t0,fontSize:13,fontFamily:"'JetBrains Mono',monospace",marginBottom:12}}/>
+        <button onClick={onSave} disabled={!setupInput.trim()}
+          style={{width:"100%",padding:"11px",borderRadius:9,border:"none",
+            background:setupInput.trim()?`linear-gradient(135deg,${C.accent},${C.purple})`:C.bg3,
+            color:setupInput.trim()?"#fff":C.t4,fontSize:13,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>
+          Guardar y empezar
+        </button>
+        {workerUrl&&<button onClick={onCancel}
+          style={{width:"100%",marginTop:8,padding:"8px",borderRadius:8,background:"transparent",border:`1px solid ${C.border}`,color:C.t3,fontSize:11}}>
+          Cancelar
+        </button>}
+      </div>
+    </div>
+  );
+}
+
 // ── NexusApp (per-profile) ────────────────────────────────────────────────────
 function NexusApp({profile,onSwitchProfile}){
   const pid=profile.id;
@@ -548,7 +616,8 @@ function NexusApp({profile,onSwitchProfile}){
   const [workerUrl,setWorkerUrlState]=useState(()=>lsGet(pk(pid,"workerUrl"),""));
   const [setupInput,setSetupInput]=useState(()=>lsGet(pk(pid,"workerUrl"),""));
   const [showSetup,setShowSetup]=useState(()=>!isClaudeArtifact()&&!lsGet(pk(pid,"workerUrl"),""));
-
+  // FIX: modelo configurable, persiste por perfil
+  const [model,setModel]=useState(()=>lsGet(pk(pid,"model"),DEFAULT_MODEL));
   const [notifPerm,setNotifPerm]=useState(()=>typeof Notification!=="undefined"?Notification.permission:"unsupported");
 
   const chatRef=useRef(null);
@@ -557,6 +626,11 @@ function NexusApp({profile,onSwitchProfile}){
 
   const nowDate=()=>new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"short"});
   const nowTime=()=>new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});
+
+  const changeModel=useCallback((mdl)=>{
+    setModel(mdl);
+    lsSet(pk(pid,"model"),mdl);
+  },[pid]);
 
   const requestNotif=useCallback(async()=>{
     if(typeof Notification==="undefined")return;
@@ -575,7 +649,7 @@ function NexusApp({profile,onSwitchProfile}){
       ?`NEXUS · ${agentsRan.length} agentes respondieron`
       :"NEXUS · El Líder respondió";
     const body=lastText.replace(/\*\*/g,"").replace(/[*`#>-]/g,"").replace(/\s+/g," ").trim().slice(0,110)+"…";
-    const n=new Notification(title,{body,tag:"nexus-resp",icon:"https://raw.githubusercontent.com/google/material-design-icons/master/png/action/notifications/materialicons/48dp/1x/baseline_notifications_white_48dp.png"});
+    const n=new Notification(title,{body,tag:"nexus-resp"});
     n.onclick=()=>{window.focus();n.close();};
     setTimeout(()=>n.close(),8000);
   },[]);
@@ -711,14 +785,36 @@ function NexusApp({profile,onSwitchProfile}){
     return picks.map(content=>({id:Date.now()+Math.random(),tag,content:content.slice(0,200),agent:agentId,date:now}));
   },[]);
 
-  // ── Send message ─────────────────────────────────────────────────────────────
+  // ── Export conversation ───────────────────────────────────────────────────────
+  // NUEVO: exportar conversación como markdown
+  const exportChat=useCallback(()=>{
+    const activeSession=sessions.find(s=>s.id===activeSid);
+    const header=`# ${activeSession?.name||"Conversación NEXUS"}\n_Exportado: ${new Date().toLocaleString("es-CO")}_\n\n---\n\n`;
+    const body=messages.map(m=>{
+      if(m.role==="system")return`> *${m.content}*\n\n`;
+      if(m.role==="user")return`**Tú** · ${m.time}\n\n${m.content}\n\n---\n\n`;
+      const a=AGENTS[m.agentId];
+      return`**${a?.name||m.agentId}** · ${m.time}${m.usedWeb?" 🌐":""}\n\n${m.content}\n\n---\n\n`;
+    }).join("");
+    const md=header+body;
+    const blob=new Blob([md],{type:"text/markdown;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    const fname=(activeSession?.name||"chat").replace(/[^a-z0-9áéíóúüñ\s]/gi,"").trim().replace(/\s+/g,"-").toLowerCase();
+    a.download=`nexus-${fname}-${Date.now()}.md`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },[messages,sessions,activeSid]);
+
+  // ── Send message — REFACTORIZADO: ejecución paralela + contexto completo para Auditor
   const sendMessage=useCallback(async(text)=>{
     if(!text.trim()||loading)return;
     const userMsg={id:Date.now(),role:"user",content:text,time:nowTime()};
     setMessages(prev=>[...prev,userMsg]);
     setInput("");setLoading(true);
 
-    // Auto-name session from first user message
+    // Auto-name session
     setSessions(prev=>{
       const u=prev.map(s=>
         s.id===activeSid&&(s.name==="Nueva conversación"||s.name==="Primera conversación")
@@ -732,20 +828,14 @@ function NexusApp({profile,onSwitchProfile}){
       .map(m=>({role:m.role==="user"?"user":"assistant",content:String(m.content||"")}))
       .filter(m=>m.content.length>0);
 
-    const agentsToRun=mode==="rapido"?["lider"]:AGENT_ORDER;
-    const newMemory=[];let liderResponse="";
+    const newMemory=[];
+    const teamResponses={};
 
-    for(const agentId of agentsToRun){
-      setThinkingAgents(prev=>new Set([...prev,agentId]));
-      setActiveAgents(prev=>new Set([...prev,agentId]));
-      if(webEnabled&&AGENTS[agentId].web)setSearchingAgents(prev=>new Set([...prev,agentId]));
-      await new Promise(r=>setTimeout(r,agentId==="lider"?150:350+Math.random()*250));
+    // Helper: ejecuta un agente con manejo de estado de UI
+    const runAgent=async(agentId,prompt)=>{
       try{
-        let prompt=text;
-        if(agentId!=="lider"&&liderResponse)
-          prompt=`PLAN DEL LÍDER: ${liderResponse}\n\nSOLICITUD: ${text}\n\nEjecuta tu rol específico.`;
-        const{text:response,usedWeb}=await callAgent(agentId,prompt,memory,files,history,webEnabled,workerUrl);
-        if(agentId==="lider")liderResponse=response;
+        const{text:response,usedWeb}=await callAgent(agentId,prompt,memory,files,history,webEnabled,workerUrl,model);
+        teamResponses[agentId]=response;
         const agentMsg={id:Date.now()+Math.random(),role:"agent",agentId,content:response,
           time:nowTime(),streaming:true,usedWeb};
         setMessages(prev=>[...prev,agentMsg]);
@@ -753,22 +843,82 @@ function NexusApp({profile,onSwitchProfile}){
         setSearchingAgents(prev=>{const n=new Set(prev);n.delete(agentId);return n;});
         setAgentLastMsg(prev=>({...prev,[agentId]:response}));
         newMemory.push(...extractMemory(response,agentId));
-        await new Promise(r=>setTimeout(r,120));
       }catch(e){
-        const errTxt=e.message.includes("NetworkError")||e.message.includes("Failed to fetch")
-          ?`Sin conexión al servidor. Verifica que el Worker esté activo (⚙).`
-          :`Error: ${e.message.slice(0,200)}`;
+        const errTxt=formatError(e);
         setMessages(prev=>[...prev,{id:Date.now()+Math.random(),role:"agent",agentId,
           content:`⚠ ${errTxt}`,time:nowTime(),streaming:false}]);
         setThinkingAgents(prev=>{const n=new Set(prev);n.delete(agentId);return n;});
         setSearchingAgents(prev=>{const n=new Set(prev);n.delete(agentId);return n;});
       }
+    };
+
+    if(mode==="rapido"){
+      // ── MODO RÁPIDO: solo el Líder ──────────────────────────────────────────
+      setThinkingAgents(prev=>new Set([...prev,"lider"]));
+      setActiveAgents(prev=>new Set([...prev,"lider"]));
+      if(webEnabled&&AGENTS["lider"].web)setSearchingAgents(prev=>new Set([...prev,"lider"]));
+      await new Promise(r=>setTimeout(r,150));
+      await runAgent("lider",text);
+      setStats(prev=>({...prev,totalMsgs:prev.totalMsgs+1}));
+      if(teamResponses.lider)notifyDone(["lider"],teamResponses.lider,"rapido");
+
+    }else{
+      // ── MODO EQUIPO: paralelo optimizado ────────────────────────────────────
+      // Fase 1: Líder (secuencial, primero — define el plan)
+      setThinkingAgents(prev=>new Set([...prev,"lider"]));
+      setActiveAgents(prev=>new Set([...prev,"lider"]));
+      if(webEnabled&&AGENTS["lider"].web)setSearchingAgents(prev=>new Set([...prev,"lider"]));
+      await new Promise(r=>setTimeout(r,150));
+      await runAgent("lider",text);
+
+      const liderResponse=teamResponses.lider||"";
+
+      // FIX: Fase 2 — Analista, Técnico y Creativo ejecutan EN PARALELO
+      // Antes ejecutaban secuencialmente con delays artificiales (~3× más lento)
+      const parallelIds=["analista","tecnico","creativo"];
+      const basePrompt=liderResponse
+        ?`PLAN DEL LÍDER: ${liderResponse}\n\nSOLICITUD: ${text}\n\nEjecuta tu rol específico.`
+        :text;
+
+      parallelIds.forEach(id=>{
+        setThinkingAgents(prev=>new Set([...prev,id]));
+        setActiveAgents(prev=>new Set([...prev,id]));
+        if(webEnabled&&AGENTS[id].web)setSearchingAgents(prev=>new Set([...prev,id]));
+      });
+
+      await new Promise(r=>setTimeout(r,80));
+      // Ejecutar los tres agentes simultáneamente
+      await Promise.all(parallelIds.map(id=>runAgent(id,basePrompt)));
+
+      // FIX: Fase 3 — Auditor recibe TODAS las respuestas del equipo para validación real
+      // Antes solo recibía el plan del Líder + solicitud, imposibilitando su rol de auditoría
+      const auditorPrompt=`REVISIÓN DEL EQUIPO NEXUS:
+
+PLAN DEL LÍDER: ${teamResponses.lider||"Sin respuesta"}
+
+ANÁLISIS DEL ANALISTA: ${teamResponses.analista||"Sin respuesta"}
+
+PROPUESTA TÉCNICA: ${teamResponses.tecnico||"Sin respuesta"}
+
+IDEAS CREATIVAS: ${teamResponses.creativo||"Sin respuesta"}
+
+SOLICITUD ORIGINAL: ${text}
+
+Valida la coherencia entre propuestas, detecta errores o contradicciones, y proporciona tu evaluación de calidad con recomendaciones finales.`;
+
+      setThinkingAgents(prev=>new Set([...prev,"auditor"]));
+      setActiveAgents(prev=>new Set([...prev,"auditor"]));
+      await new Promise(r=>setTimeout(r,80));
+      await runAgent("auditor",auditorPrompt);
+
+      setStats(prev=>({...prev,totalMsgs:prev.totalMsgs+1,tasksCompleted:prev.tasksCompleted+1}));
+      const lastResp=teamResponses.auditor||teamResponses.lider||"";
+      if(lastResp)notifyDone(AGENT_ORDER,lastResp,"equipo");
     }
+
     if(newMemory.length)setMemory(prev=>[...prev,...newMemory].slice(-80));
-    setStats(prev=>({...prev,totalMsgs:prev.totalMsgs+1,tasksCompleted:prev.tasksCompleted+(mode==="equipo"?1:0)}));
-    if(liderResponse)notifyDone(agentsToRun,liderResponse,mode);
     setLoading(false);
-  },[messages,memory,files,loading,mode,webEnabled,workerUrl,activeSid,pid,extractMemory,notifyDone]);
+  },[messages,memory,files,loading,mode,webEnabled,workerUrl,model,activeSid,pid,extractMemory,notifyDone]);
 
   // ── File handling ────────────────────────────────────────────────────────────
   const handleFile=useCallback((file)=>{
@@ -797,37 +947,7 @@ function NexusApp({profile,onSwitchProfile}){
 
   const anyThinking=thinkingAgents.size>0;
   const activeSession=sessions.find(s=>s.id===activeSid);
-
-  // ── Setup screen ─────────────────────────────────────────────────────────────
-  const SetupScreen=()=>(
-    <div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(5,8,15,.96)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{maxWidth:440,width:"100%",background:C.bg2,border:`1px solid ${C.border2}`,borderRadius:18,padding:"26px 24px",animation:"fadeIn .3s ease"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-          <span style={{fontSize:20}}>{profile.emoji}</span>
-          <div>
-            <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:C.t0}}>Configurar Worker</div>
-            <div style={{fontSize:10,color:profile.color,marginTop:1}}>{profile.name}</div>
-          </div>
-        </div>
-        <p style={{fontSize:12,color:C.t2,lineHeight:1.6,marginBottom:14}}>
-          URL de tu <strong style={{color:C.t1}}>Cloudflare Worker</strong>. Cada perfil puede tener su propio worker.
-        </p>
-        <input value={setupInput} onChange={e=>setSetupInput(e.target.value)}
-          placeholder="https://nexus-proxy.tu-usuario.workers.dev"
-          style={{width:"100%",background:C.bg3,border:`1px solid ${C.border2}`,borderRadius:9,padding:"11px 13px",color:C.t0,fontSize:13,fontFamily:"'JetBrains Mono',monospace",marginBottom:12}}/>
-        <button onClick={guardarWorker} disabled={!setupInput.trim()}
-          style={{width:"100%",padding:"11px",borderRadius:9,border:"none",
-            background:setupInput.trim()?`linear-gradient(135deg,${C.accent},${C.purple})`:C.bg3,
-            color:setupInput.trim()?"#fff":C.t4,fontSize:13,fontWeight:700,fontFamily:"'Syne',sans-serif"}}>
-          Conectar y empezar
-        </button>
-        {workerUrl&&<button onClick={()=>setShowSetup(false)}
-          style={{width:"100%",marginTop:8,padding:"8px",borderRadius:8,background:"transparent",border:`1px solid ${C.border}`,color:C.t3,fontSize:11}}>
-          Cancelar
-        </button>}
-      </div>
-    </div>
-  );
+  const currentModelInfo=MODELS.find(m=>m.id===model)||MODELS[1];
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return(
@@ -838,7 +958,19 @@ function NexusApp({profile,onSwitchProfile}){
       onDragLeave={()=>setDragOver(false)}
       onDrop={e=>{e.preventDefault();setDragOver(false);const f=e.dataTransfer.files[0];if(f)handleFile(f);}}>
 
-      {showSetup&&<SetupScreen/>}
+      {/* FIX: SetupScreen ahora es componente independiente con props explícitas */}
+      {showSetup&&(
+        <SetupScreen
+          profile={profile}
+          workerUrl={workerUrl}
+          setupInput={setupInput}
+          setSetupInput={setSetupInput}
+          model={model}
+          onModelChange={changeModel}
+          onSave={guardarWorker}
+          onCancel={()=>setShowSetup(false)}
+        />
+      )}
 
       <style>{`
         @media(max-width:900px){
@@ -867,7 +999,7 @@ function NexusApp({profile,onSwitchProfile}){
       {/* ════════════════════ SIDEBAR ════════════════════════════════════════ */}
       <div className="nexus-sidebar" style={{background:C.bg1,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",overflow:"hidden",minHeight:0}}>
 
-        {/* Header: logo + profile chip */}
+        {/* Header */}
         <div style={{padding:"11px 13px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
           <div style={{display:"flex",alignItems:"center",gap:7,minWidth:0}}>
             <div style={{width:27,height:27,borderRadius:8,background:`linear-gradient(135deg,${C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",fontFamily:"'Syne',sans-serif",flexShrink:0}}>N</div>
@@ -877,7 +1009,7 @@ function NexusApp({profile,onSwitchProfile}){
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:5}}>
-            <button onClick={onSwitchProfile} title={`Perfil activo: ${profile.name}\nClic para cambiar perfil`}
+            <button onClick={onSwitchProfile} title={`Perfil: ${profile.name}`}
               style={{display:"flex",alignItems:"center",gap:5,padding:"4px 8px",borderRadius:20,
                 background:`${profile.color}15`,border:`1px solid ${profile.color}40`,maxWidth:88,minWidth:0}}>
               <span style={{fontSize:12,flexShrink:0}}>{profile.emoji}</span>
@@ -890,12 +1022,18 @@ function NexusApp({profile,onSwitchProfile}){
         </div>
 
         {/* Status */}
-        <div style={{padding:"7px 13px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:6}}>
-          <div style={{width:6,height:6,borderRadius:"50%",background:anyThinking?C.yellow:C.green,
-            boxShadow:`0 0 6px ${anyThinking?C.yellow:C.green}`,
-            animation:anyThinking?"pulse-dot .7s infinite":"none",flexShrink:0}}/>
-          <span style={{fontSize:9,color:anyThinking?C.yellow:C.green,fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>
-            {anyThinking?`${thinkingAgents.size} activo${thinkingAgents.size>1?"s":""}...`:"Sistema listo"}
+        <div style={{padding:"7px 13px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:anyThinking?C.yellow:C.green,
+              boxShadow:`0 0 6px ${anyThinking?C.yellow:C.green}`,
+              animation:anyThinking?"pulse-dot .7s infinite":"none",flexShrink:0}}/>
+            <span style={{fontSize:9,color:anyThinking?C.yellow:C.green,fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>
+              {anyThinking?`${thinkingAgents.size} activo${thinkingAgents.size>1?"s":""}...`:"Sistema listo"}
+            </span>
+          </div>
+          {/* Indicador del modelo activo */}
+          <span style={{fontSize:8,color:currentModelInfo.color,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,opacity:.8}}>
+            {currentModelInfo.icon} {currentModelInfo.label}
           </span>
         </div>
 
@@ -930,7 +1068,9 @@ function NexusApp({profile,onSwitchProfile}){
 
         {/* Agents */}
         <div style={{padding:"7px 10px 4px",flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:5,minHeight:0}}>
-          <div style={{fontSize:9,color:C.t3,fontFamily:"'JetBrains Mono',monospace",letterSpacing:"1px",paddingLeft:2,marginBottom:2}}>EQUIPO</div>
+          <div style={{fontSize:9,color:C.t3,fontFamily:"'JetBrains Mono',monospace",letterSpacing:"1px",paddingLeft:2,marginBottom:2}}>
+            EQUIPO {mode==="equipo"&&anyThinking&&thinkingAgents.size>1&&<span style={{color:C.purple,marginLeft:4}}>↯ paralelo</span>}
+          </div>
           {AGENT_ORDER.map(id=>(
             <AgentCard key={id} agent={AGENTS[id]}
               active={activeAgents.has(id)&&!thinkingAgents.has(id)}
@@ -963,7 +1103,7 @@ function NexusApp({profile,onSwitchProfile}){
               <div style={{fontFamily:"'Syne',sans-serif",fontSize:13,fontWeight:700,color:C.t0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                 {activeSession?.name||"Chat"}
               </div>
-              <div style={{fontSize:9,color:C.t3}}>{mode==="rapido"?"⚡ Modo rápido · Líder":"👥 Equipo completo · 5 agentes"}</div>
+              <div style={{fontSize:9,color:C.t3}}>{mode==="rapido"?"⚡ Modo rápido · Líder":"👥 Equipo · 5 agentes (paralelo)"}</div>
             </div>
           </div>
           <div style={{display:"flex",gap:5,flexShrink:0}}>
@@ -971,14 +1111,19 @@ function NexusApp({profile,onSwitchProfile}){
               style={{padding:"5px 10px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border2}`,color:C.t2,fontSize:11,fontWeight:600}}>📎</button>
             <input ref={fileInputRef} type="file" style={{display:"none"}}
               onChange={e=>{const f=e.target.files[0];if(f)handleFile(f);e.target.value="";}}/>
+            {/* NUEVO: botón de exportación */}
+            <button onClick={exportChat} title="Exportar conversación como Markdown"
+              style={{padding:"5px 9px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border}`,color:C.t3,fontSize:11,fontWeight:600}}>
+              ↓ md
+            </button>
             {notifPerm!=="unsupported"&&(
               <button onClick={requestNotif}
-                title={notifPerm==="granted"?"Notificaciones activas — te avisamos cuando el equipo responda":notifPerm==="denied"?"Notificaciones bloqueadas — clic para instrucciones":"Activar notificaciones"}
+                title={notifPerm==="granted"?"Notificaciones activas":notifPerm==="denied"?"Notificaciones bloqueadas":"Activar notificaciones"}
                 style={{padding:"5px 9px",borderRadius:7,fontSize:13,border:`1px solid ${notifPerm==="granted"?C.green+"50":notifPerm==="denied"?C.red+"40":C.border}`,background:notifPerm==="granted"?C.greenDim:notifPerm==="denied"?C.redDim:C.bg3,color:notifPerm==="granted"?C.green:notifPerm==="denied"?C.red:C.t3,transition:"all .2s"}}>
                 {notifPerm==="granted"?"🔔":notifPerm==="denied"?"🔕":"🔔"}
               </button>
             )}
-            <button onClick={()=>{setSetupInput(workerUrl);setShowSetup(true);}} title="Configurar Worker"
+            <button onClick={()=>{setSetupInput(workerUrl);setShowSetup(true);}} title="Configuración"
               style={{padding:"5px 9px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border}`,color:C.t3,fontSize:13}}>⚙</button>
             <button onClick={()=>{if(window.confirm("¿Limpiar este chat?"))setMessages([makeWelcome()]);}}
               style={{padding:"5px 9px",borderRadius:7,background:C.bg3,border:`1px solid ${C.border}`,color:C.t3,fontSize:11}}>↺</button>
@@ -1017,22 +1162,34 @@ function NexusApp({profile,onSwitchProfile}){
         {/* Input */}
         <div style={{padding:"9px 16px 11px",borderTop:`1px solid ${C.border}`,background:C.bg1}}>
           <div style={{display:"flex",gap:6,marginBottom:7,flexWrap:"wrap"}}>
+            {/* Toggle modo */}
             <button onClick={()=>setMode(m=>m==="rapido"?"equipo":"rapido")}
               style={{padding:"4px 10px",borderRadius:20,fontSize:10,fontWeight:600,
                 background:mode==="equipo"?C.purpleDim:C.bg3,color:mode==="equipo"?C.purple:C.t2,
                 border:`1px solid ${mode==="equipo"?C.purple+"50":C.border}`}}>
               {mode==="equipo"?"👥 Equipo completo":"⚡ Modo rápido"}
             </button>
+            {/* Toggle web */}
             <button onClick={()=>setWebEnabled(w=>!w)}
               style={{padding:"4px 10px",borderRadius:20,fontSize:10,fontWeight:600,
                 background:webEnabled?C.tealDim:C.bg3,color:webEnabled?C.teal:C.t2,
                 border:`1px solid ${webEnabled?C.teal+"50":C.border}`}}>
               {webEnabled?"🌐 Internet activo":"🌐 Internet off"}
             </button>
+            {/* NUEVO: selector de modelo inline */}
+            <button onClick={()=>{setSetupInput(workerUrl);setShowSetup(true);}}
+              style={{padding:"4px 10px",borderRadius:20,fontSize:10,fontWeight:600,
+                background:`${currentModelInfo.color}15`,color:currentModelInfo.color,
+                border:`1px solid ${currentModelInfo.color}40`}}>
+              {currentModelInfo.icon} {currentModelInfo.label}
+            </button>
           </div>
           <div style={{background:C.bg3,border:`1px solid ${loading?C.accent+"40":C.border2}`,borderRadius:12,padding:"8px 12px",display:"flex",gap:10,alignItems:"flex-end",transition:"border-color .2s"}}>
             <textarea ref={taRef} value={input} onChange={e=>setInput(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage(input);}}}
+              onKeyDown={e=>{
+                // FIX: soporte para Enter y Cmd/Ctrl+Enter
+                if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage(input);}
+              }}
               placeholder="Escribe al equipo..." disabled={loading} rows={1}
               style={{flex:1,background:"transparent",border:"none",color:C.t0,fontSize:14,lineHeight:1.5,maxHeight:140,overflowY:"auto"}}/>
             <button onClick={()=>sendMessage(input)} disabled={loading||!input.trim()}
@@ -1046,8 +1203,8 @@ function NexusApp({profile,onSwitchProfile}){
             </button>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",marginTop:5,fontSize:9,color:C.t4,fontFamily:"'JetBrains Mono',monospace"}}>
-            <span>Enter envía · Shift+Enter salto</span>
-            <span>{memory.length} mem · {files.length} files</span>
+            <span>Enter envía · Shift+Enter salto de línea</span>
+            <span>{memory.length} mem · {files.length} files · {messages.filter(m=>m.role==="user").length} msgs</span>
           </div>
         </div>
       </div>
@@ -1109,7 +1266,7 @@ function NexusApp({profile,onSwitchProfile}){
   );
 }
 
-// ── Root App: manages profiles ────────────────────────────────────────────────
+// ── Root App ──────────────────────────────────────────────────────────────────
 function App(){
   const [profiles,setProfiles]=useState(null);
   const [activeProfile,setActiveProfile]=useState(null);
@@ -1130,12 +1287,14 @@ function App(){
     selectProfile(p);
   },[selectProfile]);
 
+  // FIX: bug de limpieza de localStorage al eliminar perfil
+  // Antes: filtraba con nx_${pid}s_ (incorrecto) — las sesiones nunca se borraban
+  // Ahora: nx_${pid}_ cubre correctamente todas las claves del perfil incluyendo sesiones
   const deleteProfile=useCallback((pid)=>{
     setProfiles(prev=>{const u=prev.filter(x=>x.id!==pid);lsSet(G_PROFILES,u);return u;});
-    // Wipe all profile data
     try{
       Object.keys(localStorage)
-        .filter(k=>k.startsWith(`nx_${pid}_`)||k.startsWith(`nx_${pid}s_`))
+        .filter(k=>k.startsWith(`nx_${pid}_`))
         .forEach(k=>localStorage.removeItem(k));
     }catch{}
     if(activeProfile?.id===pid){setActiveProfile(null);lsSet(G_ACTIVE,null);}
@@ -1145,10 +1304,8 @@ function App(){
     setActiveProfile(null);lsSet(G_ACTIVE,null);
   },[]);
 
-  // Loading state
   if(profiles===null)return null;
 
-  // Show profile selector if no active profile or profile was deleted
   if(!activeProfile||!profiles.find(p=>p.id===activeProfile.id)){
     return(
       <ProfileSelector
