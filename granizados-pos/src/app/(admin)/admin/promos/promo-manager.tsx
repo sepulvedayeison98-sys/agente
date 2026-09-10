@@ -21,7 +21,7 @@ export type PromoRow = {
   discount: number;
   active: boolean;
   basePrice: number;
-  hiddenPart: boolean;
+  missing: string[];
 };
 
 type Props = {
@@ -313,18 +313,34 @@ export function PromoManager({ promos, sizes, flavors, addons }: Props) {
             </button>
           </div>
 
-          {promo.active && promo.hiddenPart ? (
-            <p className="mt-[7px] text-[10.5px] text-[var(--color-accent-300)]">
-              No se está mostrando: parte de la combinación está oculta para el
-              vendedor.
-            </p>
+          {promo.active && promo.missing.length ? (
+            <div
+              className="mt-[8px] rounded-[var(--radius-md)] px-[9px] py-[7px]"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--color-warning) 12%, transparent)",
+              }}
+            >
+              <p
+                className="text-[11px] font-medium"
+                style={{ color: "var(--color-warning)" }}
+              >
+                No se está mostrando en el POS
+              </p>
+              <ul className="mt-[3px] list-disc pl-[15px] text-[10.5px] leading-relaxed text-[var(--color-neutral-400)]">
+                {promo.missing.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </div>
           ) : null}
         </div>
       ))}
 
       <p className="text-[11.5px] text-[var(--color-neutral-400)]">
-        El vendedor ve la promo activa más reciente. Si ocultas su tamaño, sabor
-        o alguna adición, la tarjeta desaparece del POS.
+        El vendedor ve la promo activa más reciente. Si ocultas o eliminas su
+        tamaño, su sabor o alguna de sus adiciones, la tarjeta desaparece del
+        POS y aquí se avisa cuál falta.
       </p>
     </div>
   );
