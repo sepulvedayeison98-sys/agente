@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { isFlavorColor } from "@/lib/flavor-colors";
 
 export type CatalogKind = "sizes" | "flavors" | "addons";
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -25,6 +26,7 @@ export async function createCatalogItem(
     inventoryItemId?: string | null;
     useQuantityPerUnit?: number;
     recipe?: RecipeInput;
+    color?: string | null;
   },
 ): Promise<ActionResult> {
   await requireAdmin();
@@ -53,7 +55,9 @@ export async function createCatalogItem(
     });
     await saveSizeRecipe(size.id, input.recipe);
   } else if (kind === "flavors") {
-    await prisma.flavor.create({ data: { name, inventoryItemId } });
+    await prisma.flavor.create({
+      data: { name, inventoryItemId, color: cleanColor(input.color) },
+    });
   } else {
     await prisma.addon.create({
       data: {
@@ -108,6 +112,7 @@ export async function updateCatalogLink(
     inventoryItemId?: string | null;
     useQuantityPerUnit?: number;
     recipe?: RecipeInput;
+    color?: string | null;
   },
 ): Promise<ActionResult> {
   const session = await requireAdmin();
@@ -122,7 +127,10 @@ export async function updateCatalogLink(
   }
 
   if (kind === "flavors") {
-    await prisma.flavor.update({ where: { id }, data: { inventoryItemId } });
+    await prisma.flavor.update({
+      where: { id },
+      data: { inventoryItemId, color: cleanColor(input.color) },
+    });
   } else if (kind === "addons") {
     await prisma.addon.update({
       where: { id },
@@ -252,4 +260,14 @@ export async function toggleCatalogVisibility(
 
   revalidateCatalog();
   return { ok: true };
+}
+
+/**
+ * Solo se aceptan los colores de la paleta. El valor llega del navegador, así
+ * que uno cualquiera podría no leerse sobre el fondo oscuro o confundirse con
+ * el morado del acento.
+ */
+function cleanColor(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return isFlavorColor(value) ? value : null;
 }

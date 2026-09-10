@@ -15,7 +15,7 @@ export default async function PosPage({
     prisma.flavor.findMany({
       where: { visible: true, active: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, color: true },
     }),
     prisma.addon.findMany({
       where: { visible: true, active: true },

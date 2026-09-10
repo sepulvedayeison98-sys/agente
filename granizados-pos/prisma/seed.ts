@@ -37,13 +37,15 @@ const SIZES = [
   { id: "f", name: "Familiar", price: 12000, cup: "v_fam", ice: 0.9, pulp: 0.2 },
 ];
 
+// El color identifica el sabor de un vistazo cuando hay fila. Ninguno cae
+// cerca del morado del acento, que significa "seleccionado" y nada más.
 const FLAVORS = [
-  { id: "fresa", name: "Fresa", item: "p_fresa" },
-  { id: "mango", name: "Mango", item: "p_mango" },
-  { id: "maracuya", name: "Maracuyá", item: "p_maracuya" },
-  { id: "mora", name: "Mora", item: "p_mora" },
-  { id: "pina", name: "Piña", item: "p_pina" },
-  { id: "limon", name: "Limón", item: "p_limon" },
+  { id: "fresa", name: "Fresa", item: "p_fresa", color: "#ff6b81" },
+  { id: "mango", name: "Mango", item: "p_mango", color: "#ff9838" },
+  { id: "maracuya", name: "Maracuyá", item: "p_maracuya", color: "#ffd23f" },
+  { id: "mora", name: "Mora", item: "p_mora", color: "#c2549e" },
+  { id: "pina", name: "Piña", item: "p_pina", color: "#f2e94e" },
+  { id: "limon", name: "Limón", item: "p_limon", color: "#a8e05f" },
 ];
 
 const ADDONS = [
@@ -132,8 +134,17 @@ async function main() {
   for (const flavor of FLAVORS) {
     await prisma.flavor.upsert({
       where: { id: flavor.id },
-      update: { name: flavor.name, inventoryItemId: flavor.item },
-      create: { id: flavor.id, name: flavor.name, inventoryItemId: flavor.item },
+      update: {
+        name: flavor.name,
+        inventoryItemId: flavor.item,
+        color: flavor.color,
+      },
+      create: {
+        id: flavor.id,
+        name: flavor.name,
+        inventoryItemId: flavor.item,
+        color: flavor.color,
+      },
     });
   }
 

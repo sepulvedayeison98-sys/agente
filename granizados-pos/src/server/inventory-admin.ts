@@ -186,7 +186,7 @@ export async function updateInventoryItem(
 
 export type DeleteOutcome =
   | { ok: true; archived: boolean }
-  | { ok: false; error: string };
+  | { ok: false; error: string; usedBy?: string[] };
 
 /**
  * Un insumo que nunca se usó fue un error de captura y se borra de verdad.
@@ -208,17 +208,33 @@ export async function removeInventoryItem(
 
   const [movements, flavors, addons, recipes] = await Promise.all([
     prisma.inventoryMovement.count({ where: { itemId } }),
-    prisma.flavor.count({ where: { inventoryItemId: itemId } }),
-    prisma.addon.count({ where: { inventoryItemId: itemId } }),
-    prisma.recipeLine.count({ where: { inventoryItemId: itemId } }),
+    prisma.flavor.findMany({
+      where: { inventoryItemId: itemId },
+      select: { name: true },
+    }),
+    prisma.addon.findMany({
+      where: { inventoryItemId: itemId },
+      select: { name: true },
+    }),
+    prisma.recipeLine.findMany({
+      where: { inventoryItemId: itemId },
+      select: { size: { select: { name: true } } },
+    }),
   ]);
 
-  const inUse = flavors + addons + recipes > 0;
-  if (inUse) {
+  // Decir "está conectado a un sabor, adición o receta" dejaba al
+  // administrador buscando a ciegas. Se nombra exactamente qué lo usa.
+  const usedBy = [
+    ...flavors.map((flavor) => `sabor ${flavor.name}`),
+    ...addons.map((addon) => `adición ${addon.name}`),
+    ...recipes.map((line) => `receta del tamaño ${line.size.name}`),
+  ];
+
+  if (usedBy.length) {
     return {
       ok: false,
-      error:
-        "Ese insumo está conectado a un sabor, adición o receta. Desconéctalo en Productos y precios antes de eliminarlo.",
+      error: `Primero desconéctalo de ${listar(usedBy)} en Productos y precios. Si lo borráramos, esas ventas dejarían de descontar inventario sin avisar.`,
+      usedBy,
     };
   }
 
@@ -244,4 +260,10 @@ export async function removeInventoryItem(
   });
 
   return { ok: true, archived };
+}
+
+/** "a, b y c" — para que el mensaje se lea como una frase, no como una lista. */
+function listar(items: string[]): string {
+  if (items.length === 1) return items[0];
+  return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
 }

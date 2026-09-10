@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   ClockCounterClockwise,
   DotsThree,
@@ -197,7 +199,7 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
               />
             </div>
           </div>
-          {error ? <p className="mt-[6px] text-[11px] text-[var(--color-accent-300)]">{error}</p> : null}
+          {error ? <p className="mt-[6px] text-[11px] text-[var(--color-danger)]">{error}</p> : null}
           <div className="mt-[10px] flex gap-[7px]">
             <button
               type="button"
@@ -378,6 +380,7 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
                   type="button"
                   onClick={() => {
                     setOpenMenu(null);
+                    setError(null);
                     setConfirmDelete(row.id);
                   }}
                   className="pos-tap flex flex-1 items-center justify-center gap-[5px] rounded-[var(--radius-md)] py-[7px] text-[11.5px]"
@@ -403,7 +406,29 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
                   perder el rastro de las ventas que lo consumieron.
                 </p>
                 {error ? (
-                  <p className="mt-[6px] text-[11px] text-[var(--color-accent-300)]">{error}</p>
+                  <div
+                    className="animate-rise-in mt-[7px] rounded-[var(--radius-md)] px-[9px] py-[7px]"
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--color-danger) 12%, transparent)",
+                    }}
+                  >
+                    <p className="text-[11px] leading-snug text-[var(--color-danger)]">
+                      {error}
+                    </p>
+                    <Link
+                      href="/admin/productos"
+                      className="pos-tap mt-[7px] inline-flex items-center gap-[5px] rounded-[var(--radius-sm)] px-[7px] py-[4px] text-[11px]"
+                      style={{
+                        color: "var(--color-danger)",
+                        boxShadow:
+                          "inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 45%, transparent)",
+                      }}
+                    >
+                      Ir a Productos y precios
+                      <ArrowRight size={12} />
+                    </Link>
+                  </div>
                 ) : null}
                 <div className="mt-[9px] flex gap-[7px]">
                   <button
@@ -481,7 +506,7 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
                 ) : null}
 
                 {error ? (
-                  <p className="mt-[6px] text-[11px] text-[var(--color-accent-300)]">{error}</p>
+                  <p className="mt-[6px] text-[11px] text-[var(--color-danger)]">{error}</p>
                 ) : null}
 
                 <div className="mt-[9px] flex gap-[7px]">
@@ -541,7 +566,7 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
                   </div>
                 </div>
                 {error ? (
-                  <p className="mt-[6px] text-[11px] text-[var(--color-accent-300)]">{error}</p>
+                  <p className="mt-[6px] text-[11px] text-[var(--color-danger)]">{error}</p>
                 ) : null}
                 <div className="mt-[9px] flex gap-[7px]">
                   <button

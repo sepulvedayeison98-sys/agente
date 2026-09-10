@@ -49,6 +49,7 @@ export default async function AdminProductosPage() {
     price: null,
     visible: flavor.visible,
     inventoryItemId: flavor.inventoryItemId,
+    color: flavor.color,
   }));
 
   const addonRows: CatalogRow[] = addons.map((addon) => ({
@@ -78,6 +79,7 @@ export default async function AdminProductosPage() {
         title="Sabores"
         addLabel="Nuevo sabor"
         namePlaceholder="Ej. Coco"
+        hasColor
         hasInsumo
         rows={flavorRows}
         inventory={inventory}

@@ -278,7 +278,7 @@ describe("eliminar insumo", () => {
     expect(await prisma.inventoryMovement.count({ where: { itemId: item.id } })).toBe(1);
   });
 
-  it("se niega si el insumo está conectado a un sabor", async () => {
+  it("se niega si el insumo está conectado a un sabor, y dice cuál", async () => {
     const item = await makeItem(0);
     await prisma.flavor.create({
       data: { name: "Coco", inventoryItemId: item.id },
@@ -288,8 +288,46 @@ describe("eliminar insumo", () => {
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
+    // Decir solo "está conectado a un sabor" dejaba al administrador buscando
+    // a ciegas cuál de todos.
+    expect(result.error).toContain("sabor Coco");
     expect(result.error).toContain("Productos y precios");
+    expect(result.usedBy).toEqual(["sabor Coco"]);
     expect(await prisma.inventoryItem.count({ where: { id: item.id } })).toBe(1);
+  });
+
+  it("nombra todo lo que lo usa, no solo lo primero que encuentra", async () => {
+    const item = await makeItem(0);
+    await prisma.flavor.create({ data: { name: "Coco", inventoryItemId: item.id } });
+    await prisma.addon.create({
+      data: { name: "Crema", price: 1000, cost: 300, inventoryItemId: item.id },
+    });
+
+    const result = await removeInventoryItem(ADMIN, item.id);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.usedBy).toEqual(["sabor Coco", "adición Crema"]);
+    expect(result.error).toContain("sabor Coco y adición Crema");
+  });
+
+  it("nombra el tamaño cuando el estorbo es una receta", async () => {
+    const item = await makeItem(0);
+    await prisma.product.create({
+      data: { id: "granizado_x", name: "Granizado", type: "granizado" },
+    });
+    const size = await prisma.size.create({
+      data: { name: "Jumbo", price: 15000, productId: "granizado_x" },
+    });
+    await prisma.recipeLine.create({
+      data: { sizeId: size.id, inventoryItemId: item.id, quantityPerUnit: 1 },
+    });
+
+    const result = await removeInventoryItem(ADMIN, item.id);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.usedBy).toEqual(["receta del tamaño Jumbo"]);
   });
 
   it("se niega si está en la receta de un tamaño", async () => {

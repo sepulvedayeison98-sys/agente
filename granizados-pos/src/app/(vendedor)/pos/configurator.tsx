@@ -15,7 +15,7 @@ import { cartCount, cartTotal, lineTitle } from "@/lib/cart";
 import { formatCOP } from "@/lib/money";
 
 export type CatalogSize = { id: string; name: string; price: number };
-export type CatalogFlavor = { id: string; name: string };
+export type CatalogFlavor = { id: string; name: string; color: string | null };
 export type CatalogAddon = { id: string; name: string; price: number };
 
 export type Favorite = {
@@ -239,7 +239,7 @@ export function Configurator({
                 key={option.id}
                 type="button"
                 onClick={() => setFlavorId(option.id)}
-                className="pos-tap grid h-[50px] place-items-center rounded-[var(--radius-md)] text-[13px]"
+                className="pos-tap flex h-[50px] items-center justify-center gap-[7px] rounded-[var(--radius-md)] text-[13px]"
                 style={{
                   boxShadow: ring(on),
                   color: fg(on),
@@ -247,6 +247,15 @@ export function Configurator({
                   fontWeight: on ? 600 : 400,
                 }}
               >
+                {/* El punto identifica el sabor de un vistazo cuando hay fila;
+                    nunca indica estado, así que no compite con el acento. */}
+                {option.color ? (
+                  <span
+                    aria-hidden
+                    className="size-[9px] flex-none rounded-full"
+                    style={{ background: option.color }}
+                  />
+                ) : null}
                 {option.name}
               </button>
             );

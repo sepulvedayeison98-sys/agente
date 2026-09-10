@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Eye, EyeSlash, Package, PencilSimple, Plus } from "@phosphor-icons/react";
 import { formatCOP } from "@/lib/money";
+import { FLAVOR_COLORS } from "@/lib/flavor-colors";
 import {
   createCatalogItem,
   toggleCatalogVisibility,
@@ -27,6 +28,7 @@ export type CatalogRow = {
   inventoryItemId?: string | null;
   useQuantityPerUnit?: number;
   recipe?: Recipe;
+  color?: string | null;
 };
 
 export type InventoryOption = { id: string; name: string; unit: string };
@@ -40,6 +42,7 @@ type Props = {
   hasCost?: boolean;
   hasInsumo?: boolean;
   hasConsumo?: boolean;
+  hasColor?: boolean;
   hasRecipe?: boolean;
   rows: CatalogRow[];
   inventory: InventoryOption[];
@@ -54,6 +57,7 @@ export function CatalogSection({
   hasCost = false,
   hasInsumo = false,
   hasConsumo = false,
+  hasColor = false,
   hasRecipe = false,
   rows,
   inventory,
@@ -63,6 +67,7 @@ export function CatalogSection({
   const [linking, setLinking] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", price: "", cost: "" });
   const [link, setLink] = useState({
+    color: "",
     inventoryItemId: "",
     useQuantityPerUnit: "",
     cupItemId: "",
@@ -85,6 +90,7 @@ export function CatalogSection({
     setEditing(null);
     setError(null);
     setLink({
+      color: row.color ?? "",
       inventoryItemId: row.inventoryItemId ?? "",
       useQuantityPerUnit: row.useQuantityPerUnit ? String(row.useQuantityPerUnit) : "",
       cupItemId: row.recipe?.cupItemId ?? "",
@@ -98,6 +104,7 @@ export function CatalogSection({
     setError(null);
     startTransition(async () => {
       const result = await updateCatalogLink(kind, id, {
+        color: hasColor ? link.color || null : undefined,
         inventoryItemId: link.inventoryItemId || null,
         useQuantityPerUnit: Number(link.useQuantityPerUnit || 0),
         recipe: hasRecipe
@@ -400,6 +407,47 @@ export function CatalogSection({
                   </>
                 ) : (
                   <>
+                    {hasColor ? (
+                      <>
+                        <label className={labelSmall}>
+                          Color del sabor (para reconocerlo de un vistazo)
+                        </label>
+                        <div className="mb-2 mt-[5px] flex flex-wrap gap-[6px]">
+                          <button
+                            type="button"
+                            aria-label="Sin color"
+                            aria-pressed={!link.color}
+                            onClick={() => setLink({ ...link, color: "" })}
+                            className="pos-tap grid size-[30px] place-items-center rounded-full text-[15px] text-[var(--color-neutral-500)]"
+                            style={{
+                              boxShadow: !link.color
+                                ? "inset 0 0 0 2px var(--color-accent)"
+                                : "inset 0 0 0 1px var(--color-divider)",
+                            }}
+                          >
+                            ×
+                          </button>
+                          {FLAVOR_COLORS.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              aria-label={option.label}
+                              aria-pressed={link.color === option.value}
+                              onClick={() => setLink({ ...link, color: option.value })}
+                              className="pos-tap size-[30px] rounded-full"
+                              style={{
+                                background: option.value,
+                                boxShadow:
+                                  link.color === option.value
+                                    ? "0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-text)"
+                                    : "none",
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    ) : null}
+
                     <label className={labelSmall}>Insumo que descuenta</label>
                     <select
                       value={link.inventoryItemId}

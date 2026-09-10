@@ -97,6 +97,9 @@ model Size {
 model Flavor {
   id              String         @id @default(cuid())
   name            String
+  /// Color del punto que identifica el sabor en el POS. Sin él, los seis
+  /// sabores son seis rectángulos grises que hay que leer uno por uno.
+  color           String?
   imageUrl        String?
   visible         Boolean        @default(true)
   active          Boolean        @default(true)
