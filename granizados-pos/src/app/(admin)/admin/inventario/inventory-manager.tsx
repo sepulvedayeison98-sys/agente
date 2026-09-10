@@ -257,6 +257,7 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
               </button>
               <button
                 type="button"
+                aria-label={`Mover existencias de ${row.name}`}
                 onClick={() => {
                   setOpenMovement(openMovement === row.id ? null : row.id);
                   setOpenHistory(null);
