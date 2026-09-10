@@ -4,6 +4,7 @@ import type { AddonModel, FlavorModel, SizeModel } from "@/generated/prisma/mode
 import { prisma } from "@/lib/prisma";
 import type { SessionPayload } from "@/lib/session-token";
 import { computeConsumption, round } from "@/server/inventory";
+import { getSetting } from "@/server/settings";
 
 export type SaleRequestLine = {
   sizeId: string;
@@ -121,29 +122,35 @@ export async function registerSale(
     }
   }
 
-  // Cada venta confirmada descuenta inventario según la receta configurada.
-  const recipes = await prisma.recipeLine.findMany({
-    where: { sizeId: { in: priced.map((item) => item.size.id) } },
-    select: {
-      sizeId: true,
-      inventoryItemId: true,
-      resolveItemFromFlavor: true,
-      quantityPerUnit: true,
-    },
-  });
+  // Cada venta confirmada descuenta inventario según la receta configurada,
+  // salvo que el administrador apague el descuento automático.
+  const autoDeduct = await getSetting("descuento_inventario");
+  const recipes = autoDeduct
+    ? await prisma.recipeLine.findMany({
+        where: { sizeId: { in: priced.map((item) => item.size.id) } },
+        select: {
+          sizeId: true,
+          inventoryItemId: true,
+          resolveItemFromFlavor: true,
+          quantityPerUnit: true,
+        },
+      })
+    : [];
 
-  const consumption = computeConsumption(
-    priced.map((item) => ({
-      sizeId: item.size.id,
-      flavorInventoryItemId: item.flavor.inventoryItemId,
-      quantity: item.line.quantity,
-      addons: item.addons.map((addon) => ({
-        inventoryItemId: addon.inventoryItemId,
-        useQuantityPerUnit: addon.useQuantityPerUnit,
-      })),
-    })),
-    recipes,
-  );
+  const consumption = autoDeduct
+    ? computeConsumption(
+        priced.map((item) => ({
+          sizeId: item.size.id,
+          flavorInventoryItemId: item.flavor.inventoryItemId,
+          quantity: item.line.quantity,
+          addons: item.addons.map((addon) => ({
+            inventoryItemId: addon.inventoryItemId,
+            useQuantityPerUnit: addon.useQuantityPerUnit,
+          })),
+        })),
+        recipes,
+      )
+    : new Map<string, number>();
 
   for (let attempt = 0; attempt < MAX_NUMBER_RETRIES; attempt++) {
     try {

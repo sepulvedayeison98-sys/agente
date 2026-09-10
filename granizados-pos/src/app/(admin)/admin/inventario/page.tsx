@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/dal";
 import { LowStockAlert } from "@/components/inventory/low-stock-alert";
 import { formatQuantity } from "@/lib/money";
+import { getSetting } from "@/server/settings";
 
 export default async function AdminInventarioPage() {
   await requireAdmin();
@@ -10,7 +11,10 @@ export default async function AdminInventarioPage() {
     orderBy: { name: "asc" },
   });
 
-  const low = items.filter((item) => item.quantity <= item.minimum);
+  const alertsOn = await getSetting("alertas_minimo");
+  const low = alertsOn
+    ? items.filter((item) => item.quantity <= item.minimum)
+    : [];
 
   return (
     <div className="flex flex-col gap-3">

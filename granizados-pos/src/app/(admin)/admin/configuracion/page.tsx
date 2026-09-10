@@ -1,7 +1,20 @@
-export default function Page() {
+import { requireAdmin } from "@/lib/dal";
+import { getSettings, SETTINGS } from "@/server/settings";
+import { SettingsList } from "./settings-list";
+
+export default async function AdminConfiguracionPage() {
+  await requireAdmin();
+
+  const values = await getSettings();
+
   return (
-    <div className="pt-10 text-center text-[13px] text-[var(--color-neutral-400)]">
-      Se implementa en H6.
-    </div>
+    <SettingsList
+      settings={SETTINGS.map((setting) => ({
+        key: setting.key,
+        label: setting.label,
+        note: setting.note,
+        value: values[setting.key],
+      }))}
+    />
   );
 }

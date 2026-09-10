@@ -252,3 +252,10 @@ model AuditLog {
   newValue  Json?
   createdAt DateTime @default(now())
 }
+
+// Ajustes del negocio, en clave/valor para no migrar por cada interruptor nuevo.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

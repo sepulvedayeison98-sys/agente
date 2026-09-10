@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatCOP } from "@/lib/money";
 import { isPeriodId, resolvePeriod, PERIODS } from "@/server/periods";
 import { LowStockAlert } from "@/components/inventory/low-stock-alert";
+import { getSetting } from "@/server/settings";
 import { PeriodChips } from "./period-chips";
 import { HourBars } from "./hour-bars";
 
@@ -62,7 +63,10 @@ export default async function AdminDashboardPage({
     byHour.set(hour, (byHour.get(hour) ?? 0) + sale.total);
   }
 
-  const low = items.filter((item) => item.quantity <= item.minimum);
+  const alertsOn = await getSetting("alertas_minimo");
+  const low = alertsOn
+    ? items.filter((item) => item.quantity <= item.minimum)
+    : [];
 
   const kpis = [
     { label: "Ventas", value: formatCOP(revenue), note: `${sales.length} ventas` },
