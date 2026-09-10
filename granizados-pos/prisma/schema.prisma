@@ -49,6 +49,10 @@ model User {
   name               String
   username           String               @unique
   pinHash            String
+  /// Cuándo se tocaron las credenciales por última vez. Un token firmado antes
+  /// de esta fecha deja de valer: sin esto, cambiar un PIN o desactivar a
+  /// alguien no lo sacaba de la app hasta que su sesión caducara sola.
+  credentialsAt      DateTime             @default(now())
   role               Role
   active             Boolean              @default(true)
   branchId           String

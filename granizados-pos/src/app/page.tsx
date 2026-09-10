@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { currentUser } from "@/lib/dal";
 
 export default async function HomePage() {
-  const session = await getSession();
-  if (!session?.userId) {
+  const session = await currentUser();
+  if (!session) {
     redirect("/login");
   }
   redirect(session.role === "ADMINISTRADOR" ? "/admin/dashboard" : "/pos");

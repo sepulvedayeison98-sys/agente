@@ -45,7 +45,9 @@ export async function decrypt(token: string | undefined) {
     const { payload } = await jwtVerify(token, getKey(), {
       algorithms: ["HS256"],
     });
-    return payload as SessionPayload & { exp?: number };
+    // `iat` importa: es la fecha de firma con la que se compara si las
+    // credenciales del usuario cambiaron después.
+    return payload as SessionPayload & { exp?: number; iat?: number };
   } catch {
     return null;
   }
