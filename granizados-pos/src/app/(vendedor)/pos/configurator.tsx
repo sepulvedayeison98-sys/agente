@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Plus,
   PlusCircle,
   ShoppingCartSimple,
-  Sparkle,
 } from "@phosphor-icons/react";
 import { addLine, useCart } from "@/components/vendedor/use-cart";
 import { useToast } from "@/components/vendedor/toast";
@@ -138,7 +138,15 @@ export function Configurator({
             boxShadow: "inset 0 0 0 1px var(--color-accent-700)",
           }}
         >
-          <Sparkle size={20} weight="fill" className="text-[var(--color-brand-green)]" />
+          {/* El emblema de la marca en vez de una estrella genérica: la promo
+              del día es de la casa y se ve de quién es. */}
+          <Image
+            src="/logo-oasis-sm.png"
+            alt=""
+            width={132}
+            height={98}
+            className="h-[30px] w-auto flex-none"
+          />
           <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--color-brand-cyan)]">
               Promo del día
