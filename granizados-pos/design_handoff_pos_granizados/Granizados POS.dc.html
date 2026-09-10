@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="./styles.css">
+
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)}
+a{color:var(--color-accent)}a:hover{color:var(--color-accent-300)}
+.pos-tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .12s,box-shadow .12s}
+.pos-tap:active{transform:scale(.985)}
+.pos-scroll::-webkit-scrollbar{width:0}
+@keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+@keyframes riseIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;padding:36px 24px 56px;display:flex;flex-direction:column;align-items:center;gap:22px">
+  <div style="width:100%;max-width:860px;display:flex;flex-wrap:wrap;align-items:baseline;gap:12px">
+    <h4 style="margin:0">Granizados Oasis — POS móvil</h4>
+    <span class="text-muted" style="font-size:12px">Prototipo funcional · vendedor y administrador sobre los mismos datos</span>
+  </div>
+
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+  <div style="height:100%;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:15px;padding-top:52px">
+
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 16px 10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-heading);font-weight:500;font-size:17px;letter-spacing:-.015em">{{ headerTitle }}</div>
+        <div class="text-muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ headerSub }}</div>
+      </div>
+      <div class="pos-tap" onClick="{{ toggleRole }}" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--color-divider);border-radius:8px;font-size:11px">
+        <i class="ph ph-arrows-left-right" style="font-size:13px;color:var(--color-accent)"></i>{{ roleLabel }}
+      </div>
+    </div>
+
+    <div class="pos-scroll" style="flex:1;overflow:auto;padding:0 16px 12px">
+
+      <sc-if value="{{ isPos }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="POS / Nueva venta" style="display:flex;flex-direction:column;gap:14px">
+
+        <sc-if value="{{ promoOn }}">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:8px;background:var(--color-accent-900);box-shadow:inset 0 0 0 1px var(--color-accent-700)">
+          <i class="ph-fill ph-sparkle" style="font-size:20px;color:var(--color-accent-300)"></i>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-300)">Promo del día</div>
+            <div style="font-family:var(--font-heading);font-weight:500;font-size:15px">{{ promoName }}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:16px;font-family:var(--font-heading)">{{ promoPrice }}</div>
+            <div class="text-muted" style="font-size:10px;text-decoration:line-through">{{ promoWas }}</div>
+          </div>
+          <div class="pos-tap" onClick="{{ addPromo }}" style="width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-accent);color:var(--color-accent)">
+            <i class="ph ph-plus" style="font-size:17px"></i>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ showFavs }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <h6 style="margin:0 0 8px;color:var(--color-neutral-400)">Los más vendidos · un toque</h6>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <sc-for list="{{ favs }}" as="f" hint-placeholder-count="4">
+              <div class="pos-tap" onClick="{{ f.press }}" style="padding:10px 11px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm);min-height:64px;display:flex;flex-direction:column;justify-content:space-between">
+                <div style="font-family:var(--font-heading);font-weight:500;font-size:14px;line-height:1.15">{{ f.name }}</div>
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
+                  <span class="text-muted" style="font-size:10.5px">{{ f.sub }}</span>
+                  <span style="font-size:13px;color:var(--color-accent-300)">{{ f.price }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <div>
+          <h6 style="margin:0 0 8px;color:var(--color-neutral-400)">Armar granizado</h6>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            <sc-for list="{{ sizeOpts }}" as="s" hint-placeholder-count="4">
+              <div class="pos-tap" onClick="{{ s.press }}" style="padding:9px 4px;border-radius:8px;text-align:center;background:var(--color-surface);box-shadow:inset 0 0 0 {{ s.ring }}">
+                <div style="font-size:11.5px;color:{{ s.fg }}">{{ s.label }}</div>
+                <div style="font-family:var(--font-heading);font-size:13.5px;margin-top:2px">{{ s.price }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px">
+            <sc-for list="{{ flavorOpts }}" as="f" hint-placeholder-count="6">
+              <div class="pos-tap" onClick="{{ f.press }}" style="height:50px;display:grid;place-items:center;border-radius:8px;background:var(--color-surface);box-shadow:inset 0 0 0 {{ f.ring }};font-size:13px;color:{{ f.fg }}">{{ f.label }}</div>
+            </sc-for>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+            <sc-for list="{{ addonOpts }}" as="a" hint-placeholder-count="5">
+              <div class="pos-tap" onClick="{{ a.press }}" style="display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:8px;background:var(--color-surface);box-shadow:inset 0 0 0 {{ a.ring }};font-size:12.5px;color:{{ a.fg }}">
+                {{ a.label }}<span class="text-muted" style="font-size:11px">{{ a.price }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="padding:11px 12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+            <span style="font-size:13px">{{ draftLabel }}</span>
+            <span style="font-family:var(--font-heading);font-size:19px">{{ draftPrice }}</span>
+          </div>
+          <div class="pos-tap" onClick="{{ addDraft }}" style="margin-top:10px;height:50px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:8px;border:1px solid var(--color-accent);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 12%,transparent);font-family:var(--font-heading);font-weight:500;font-size:15px;letter-spacing:.02em">
+            <i class="ph ph-plus-circle" style="font-size:18px"></i>AGREGAR AL CARRITO
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isCart }}">
+      <div data-screen-label="Carrito">
+        <h6 style="margin:0 0 10px;color:var(--color-neutral-400)">Carrito · {{ cartCount }} ítems</h6>
+        <sc-if value="{{ cartEmpty }}">
+          <div class="text-muted" style="padding:40px 0;text-align:center;font-size:13px">El carrito está vacío.</div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ cartLines }}" as="l" hint-placeholder-count="2">
+            <div style="padding:10px 12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+              <div style="display:flex;align-items:flex-start;gap:10px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:var(--font-heading);font-weight:500;font-size:14px">{{ l.title }}</div>
+                  <div class="text-muted" style="font-size:11px">{{ l.sub }}</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-family:var(--font-heading);font-size:15px">{{ l.subtotal }}</div>
+                  <div class="text-muted" style="font-size:10.5px">{{ l.unit }} c/u</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:9px">
+                <div class="pos-tap" onClick="{{ l.dec }}" style="width:34px;height:34px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider)"><i class="ph ph-minus"></i></div>
+                <div style="min-width:22px;text-align:center;font-family:var(--font-heading);font-size:15px">{{ l.qty }}</div>
+                <div class="pos-tap" onClick="{{ l.inc }}" style="width:34px;height:34px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider)"><i class="ph ph-plus"></i></div>
+                <div style="flex:1"></div>
+                <div class="pos-tap" onClick="{{ l.edit }}" style="height:34px;display:flex;align-items:center;gap:5px;padding:0 10px;border-radius:8px;border:1px solid var(--color-divider);font-size:12px"><i class="ph ph-pencil-simple" style="font-size:13px"></i>Editar</div>
+                <div class="pos-tap" onClick="{{ l.del }}" style="width:34px;height:34px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider);color:var(--color-neutral-400)"><i class="ph ph-trash"></i></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ cartHas }}">
+        <div style="margin-top:14px;padding:12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+          <div style="display:flex;justify-content:space-between;font-size:13px" class="text-muted"><span>Subtotal</span><span>{{ cartTotal }}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px">
+            <span style="font-family:var(--font-heading);font-size:14px">TOTAL</span>
+            <span style="font-family:var(--font-heading);font-size:26px">{{ cartTotal }}</span>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isPay }}">
+      <div data-screen-label="Cobro">
+        <div style="text-align:center;padding:4px 0 12px">
+          <div class="text-muted" style="font-size:11px;letter-spacing:.08em;text-transform:uppercase">Total a cobrar</div>
+          <div style="font-family:var(--font-heading);font-size:38px;line-height:1.1">{{ cartTotal }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <sc-for list="{{ methodOpts }}" as="m" hint-placeholder-count="4">
+            <div class="pos-tap" onClick="{{ m.press }}" style="height:46px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:8px;background:var(--color-surface);box-shadow:inset 0 0 0 {{ m.ring }};font-size:13.5px;color:{{ m.fg }}">
+              <i class="ph {{ m.icon }}" style="font-size:16px"></i>{{ m.label }}
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ isCash }}">
+        <div style="margin-top:14px">
+          <div style="display:flex;gap:6px">
+            <sc-for list="{{ quickCash }}" as="q" hint-placeholder-count="4">
+              <div class="pos-tap" onClick="{{ q.press }}" style="flex:1;height:38px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider);font-size:12.5px">{{ q.label }}</div>
+            </sc-for>
+          </div>
+          <div style="margin-top:10px;padding:11px 12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span class="text-muted" style="font-size:12px">Dinero recibido</span>
+              <span style="font-family:var(--font-heading);font-size:22px">{{ receivedFmt }}</span>
+            </div>
+            <div style="height:1px;margin:9px 0;background:var(--color-divider)"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font-size:13px">Cambio</span>
+              <span style="font-family:var(--font-heading);font-size:22px;color:{{ changeColor }}">{{ changeFmt }}</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px">
+            <sc-for list="{{ keypad }}" as="k" hint-placeholder-count="12">
+              <div class="pos-tap" onClick="{{ k.press }}" style="height:46px;display:grid;place-items:center;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm);font-family:var(--font-heading);font-size:18px">{{ k.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isDone }}">
+      <div data-screen-label="Venta registrada" style="padding-top:30px;text-align:center;animation:riseIn .3s ease">
+        <div style="width:76px;height:76px;margin:0 auto;border-radius:50%;display:grid;place-items:center;border:1px solid var(--color-accent);background:color-mix(in srgb,var(--color-accent) 14%,transparent);animation:popIn .28s ease">
+          <i class="ph ph-check" style="font-size:34px;color:var(--color-accent)"></i>
+        </div>
+        <h4 style="margin:16px 0 4px">Venta registrada correctamente</h4>
+        <div class="text-muted" style="font-size:12px">Venta {{ doneNum }} · {{ doneTime }} · {{ doneMethod }}</div>
+        <div style="margin-top:18px;padding:12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm);text-align:left">
+          <div style="display:flex;justify-content:space-between;font-size:13px"><span class="text-muted">Total</span><span style="font-family:var(--font-heading);font-size:17px">{{ doneTotal }}</span></div>
+          <sc-if value="{{ doneHasChange }}">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px"><span class="text-muted">Cambio entregado</span><span style="font-family:var(--font-heading);font-size:17px">{{ doneChange }}</span></div>
+          </sc-if>
+          <div style="height:1px;margin:10px 0;background:var(--color-divider)"></div>
+          <div class="text-muted" style="font-size:11.5px;display:flex;gap:7px;align-items:flex-start">
+            <i class="ph ph-package" style="font-size:14px;color:var(--color-accent)"></i>
+            <span>{{ doneStock }}</span>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isSales }}">
+      <div data-screen-label="Mis ventas del turno">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+          <sc-for list="{{ turnStats }}" as="s" hint-placeholder-count="3">
+            <div style="padding:9px 10px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+              <div class="text-muted" style="font-size:10px;letter-spacing:.06em;text-transform:uppercase">{{ s.label }}</div>
+              <div style="font-family:var(--font-heading);font-size:16px;margin-top:2px">{{ s.value }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <sc-for list="{{ mySales }}" as="v" hint-placeholder-count="5">
+            <div class="pos-tap" onClick="{{ v.press }}" style="padding:10px 12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm);opacity:{{ v.op }}">
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <span style="font-family:var(--font-heading);font-size:13.5px">{{ v.num }}</span>
+                <span class="text-muted" style="font-size:11px">{{ v.hora }}</span>
+                <span class="tag {{ v.tagClass }}" style="margin-left:auto">{{ v.metodo }}</span>
+                <span style="font-family:var(--font-heading);font-size:15px;min-width:66px;text-align:right">{{ v.total }}</span>
+              </div>
+              <div class="text-muted" style="font-size:11.5px;margin-top:4px">{{ v.detail }}</div>
+              <sc-if value="{{ v.open }}">
+                <div style="margin-top:9px;padding-top:9px;border-top:1px solid var(--color-divider);display:flex;align-items:center;gap:8px">
+                  <span class="text-muted" style="font-size:11px;flex:1">Cerrada · requiere autorización del administrador</span>
+                  <div class="pos-tap" onClick="{{ v.anular }}" style="padding:6px 10px;border-radius:8px;border:1px solid var(--color-divider);font-size:11.5px">Solicitar anulación</div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isClose }}">
+      <div data-screen-label="Cierre de caja">
+        <sc-if value="{{ closedDone }}">
+        <div style="padding-top:26px;text-align:center">
+          <div style="width:68px;height:68px;margin:0 auto;border-radius:50%;display:grid;place-items:center;border:1px solid var(--color-accent);background:color-mix(in srgb,var(--color-accent) 14%,transparent)"><i class="ph ph-lock-simple" style="font-size:28px;color:var(--color-accent)"></i></div>
+          <h4 style="margin:14px 0 4px">Caja cerrada</h4>
+          <div class="text-muted" style="font-size:12px">Turno tarde · {{ closeTime }} · diferencia {{ diffFmt }}</div>
+          <div class="text-muted" style="font-size:11.5px;margin-top:14px">El administrador puede consultar este cierre en Caja.</div>
+        </div>
+        </sc-if>
+        <sc-if value="{{ closeOpen }}">
+        <div>
+          <h6 style="margin:0 0 10px;color:var(--color-neutral-400)">Resumen del turno</h6>
+          <div style="padding:12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <sc-for list="{{ closeRows }}" as="r" hint-placeholder-count="6">
+              <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px">
+                <span class="text-muted">{{ r.label }}</span><span style="font-family:var(--font-heading)">{{ r.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:12px;padding:12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span class="text-muted" style="font-size:12px">Dinero esperado en efectivo</span>
+              <span style="font-family:var(--font-heading);font-size:19px">{{ expectedFmt }}</span>
+            </div>
+            <div style="height:1px;margin:10px 0;background:var(--color-divider)"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font-size:13px">Efectivo contado</span>
+              <span style="font-family:var(--font-heading);font-size:19px">{{ countedFmt }}</span>
+            </div>
+            <div style="height:1px;margin:10px 0;background:var(--color-divider)"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font-size:13px">Diferencia</span>
+              <span style="font-family:var(--font-heading);font-size:22px;color:{{ diffColor }}">{{ diffFmt }}</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px">
+            <sc-for list="{{ keypad }}" as="k" hint-placeholder-count="12">
+              <div class="pos-tap" onClick="{{ k.press }}" style="height:44px;display:grid;place-items:center;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm);font-family:var(--font-heading);font-size:18px">{{ k.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ isAdmin }}">
+      <div data-screen-label="Administrador">
+        <div class="pos-scroll" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin:0 -16px 6px;padding-left:16px;padding-right:16px">
+          <sc-for list="{{ adminTabs }}" as="t" hint-placeholder-count="8">
+            <div class="pos-tap" onClick="{{ t.press }}" style="flex:none;padding:7px 11px;border-radius:8px;font-size:12.5px;white-space:nowrap;background:var(--color-surface);box-shadow:inset 0 0 0 {{ t.ring }};color:{{ t.fg }}">{{ t.label }}</div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ atDash }}">
+        <div>
+          <div class="pos-scroll" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">
+            <sc-for list="{{ periodOpts }}" as="p" hint-placeholder-count="5">
+              <div class="pos-tap" onClick="{{ p.press }}" style="flex:none;padding:6px 10px;border-radius:8px;font-size:12px;white-space:nowrap;box-shadow:inset 0 0 0 {{ p.ring }};color:{{ p.fg }}">{{ p.label }}</div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:{{ kpiCols }};gap:7px">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="7">
+              <div style="padding:11px 12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+                <div class="text-muted" style="font-size:10px;letter-spacing:.07em;text-transform:uppercase">{{ k.label }}</div>
+                <div style="font-family:var(--font-heading);font-size:{{ k.size }};margin-top:3px">{{ k.value }}</div>
+                <div style="font-size:10.5px;color:var(--color-accent-300)">{{ k.delta }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <h6 style="margin:16px 0 8px;color:var(--color-neutral-400)">Ventas por hora</h6>
+          <div style="display:flex;align-items:flex-end;gap:5px;height:96px;padding:10px 12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <sc-for list="{{ hourBars }}" as="h" hint-placeholder-count="9">
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;height:100%">
+                <div style="width:100%;border-radius:3px;background:{{ h.bg }};height:{{ h.h }}"></div>
+                <span class="text-muted" style="font-size:9px">{{ h.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ hasLow }}">
+          <div style="margin-top:12px;display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--color-accent-900);box-shadow:inset 0 0 0 1px var(--color-accent-700)">
+            <i class="ph-fill ph-warning" style="font-size:16px;color:var(--color-accent-300)"></i>
+            <div style="font-size:12px">Inventario bajo<div class="text-muted" style="font-size:11.5px">{{ lowList }}</div></div>
+          </div>
+          </sc-if>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ atVentas }}">
+        <div>
+          <table class="table"><thead><tr><th>Venta</th><th>Hora</th><th>Pago</th><th style="text-align:right">Total</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ allSales }}" as="v" hint-placeholder-count="6">
+              <tr style="opacity:{{ v.op }}"><td style="font-size:12.5px">{{ v.num }}<div class="text-muted" style="font-size:10.5px">{{ v.vendedor }}</div></td><td style="font-size:12.5px">{{ v.hora }}</td><td style="font-size:12px">{{ v.metodo }}</td><td style="text-align:right;font-family:var(--font-heading);font-size:13px">{{ v.total }}</td></tr>
+            </sc-for>
+          </tbody></table>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ atProd }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <sc-for list="{{ prodSections }}" as="sec" hint-placeholder-count="3">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <h6 style="margin:0;flex:1;color:var(--color-neutral-400)">{{ sec.title }}</h6>
+                <div class="pos-tap" onClick="{{ sec.addPress }}" style="display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:8px;border:1px solid var(--color-accent);color:var(--color-accent);font-size:11.5px">
+                  <i class="ph ph-plus" style="font-size:13px"></i>{{ sec.addLabel }}
+                </div>
+              </div>
+
+              <sc-if value="{{ sec.adding }}">
+              <div style="margin-bottom:8px;padding:11px 12px;border-radius:8px;background:var(--color-surface);box-shadow:inset 0 0 0 1px var(--color-accent-700);animation:riseIn .18s ease">
+                <div class="field" style="margin-bottom:8px">
+                  <label>Nombre</label>
+                  <input class="input" value="{{ sec.newName }}" onChange="{{ sec.onNewName }}" placeholder="{{ sec.namePh }}">
+                </div>
+                <sc-if value="{{ sec.hasPrice }}">
+                <div style="display:flex;gap:8px">
+                  <div class="field" style="flex:1">
+                    <label>Precio</label>
+                    <input class="input" value="{{ sec.newPrice }}" onChange="{{ sec.onNewPrice }}" placeholder="0">
+                  </div>
+                  <sc-if value="{{ sec.hasCost }}">
+                  <div class="field" style="flex:1">
+                    <label>Costo</label>
+                    <input class="input" value="{{ sec.newCost }}" onChange="{{ sec.onNewCost }}" placeholder="0">
+                  </div>
+                  </sc-if>
+                </div>
+                </sc-if>
+                <div style="display:flex;gap:7px;margin-top:10px">
+                  <div class="pos-tap" onClick="{{ sec.save }}" style="flex:1;height:38px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-accent);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 12%,transparent);font-size:13px">Guardar</div>
+                  <div class="pos-tap" onClick="{{ sec.cancel }}" style="flex:none;padding:0 14px;height:38px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider);font-size:13px">Cancelar</div>
+                </div>
+              </div>
+              </sc-if>
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ sec.rows }}" as="r" hint-placeholder-count="4">
+                  <div style="padding:9px 11px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm);opacity:{{ r.op }}">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <div style="flex:1;min-width:0">
+                        <div style="font-size:13px">{{ r.label }}</div>
+                        <div class="text-muted" style="font-size:11px">{{ r.meta }}</div>
+                      </div>
+                      <span class="tag {{ r.tagClass }}">{{ r.status }}</span>
+                      <div class="pos-tap" onClick="{{ r.toggle }}" title="Mostrar u ocultar al vendedor" style="width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider);color:{{ r.eyeFg }}">
+                        <i class="ph {{ r.eyeIcon }}" style="font-size:15px"></i>
+                      </div>
+                      <div class="pos-tap" onClick="{{ r.edit }}" style="width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider)">
+                        <i class="ph ph-pencil-simple" style="font-size:15px"></i>
+                      </div>
+                    </div>
+                    <sc-if value="{{ r.editing }}">
+                    <div style="margin-top:9px;padding-top:9px;border-top:1px solid var(--color-divider)">
+                      <div style="display:flex;gap:8px">
+                        <div class="field" style="flex:1.4">
+                          <label>Nombre</label>
+                          <input class="input" value="{{ r.nameVal }}" onChange="{{ r.onName }}">
+                        </div>
+                        <sc-if value="{{ r.hasPrice }}">
+                        <div class="field" style="flex:1">
+                          <label>Precio</label>
+                          <input class="input" value="{{ r.priceVal }}" onChange="{{ r.onPrice }}">
+                        </div>
+                        </sc-if>
+                      </div>
+                      <div style="display:flex;gap:7px;margin-top:9px">
+                        <div class="pos-tap" onClick="{{ r.save }}" style="flex:1;height:36px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-accent);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 12%,transparent);font-size:12.5px">Guardar cambios</div>
+                        <div class="pos-tap" onClick="{{ r.cancel }}" style="flex:none;padding:0 12px;height:36px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider);font-size:12.5px">Cancelar</div>
+                      </div>
+                      <div class="text-muted" style="font-size:10.5px;margin-top:7px">Los cambios de precio aplican solo a ventas nuevas; las ventas históricas conservan su precio.</div>
+                    </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <div class="text-muted" style="font-size:11.5px">Lo que ocultes aquí desaparece de la pantalla del vendedor de inmediato.</div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ atInv }}">
+        <div>
+          <table class="table"><thead><tr><th>Insumo</th><th style="text-align:right">Existencia</th><th style="text-align:right">Mínimo</th></tr></thead><tbody>
+            <sc-for list="{{ invRows }}" as="i" hint-placeholder-count="8">
+              <tr><td style="font-size:13px">{{ i.label }}<span style="color:var(--color-accent-300);font-size:11px">{{ i.flag }}</span></td><td style="text-align:right;font-family:var(--font-heading);font-size:13px">{{ i.qty }}</td><td style="text-align:right;font-size:12.5px" class="text-muted">{{ i.min }}</td></tr>
+            </sc-for>
+          </tbody></table>
+          <div class="text-muted" style="font-size:11.5px;margin-top:10px">Cada venta descuenta vaso, hielo, pulpa y adiciones según la receta configurada.</div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ atCaja }}">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ closures }}" as="c" hint-placeholder-count="3">
+            <div style="padding:11px 12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <span style="font-family:var(--font-heading);font-size:13.5px">{{ c.turno }}</span>
+                <span class="text-muted" style="font-size:11px">{{ c.fecha }}</span>
+                <span style="margin-left:auto;font-family:var(--font-heading);font-size:14px;color:{{ c.color }}">{{ c.diff }}</span>
+              </div>
+              <div class="text-muted" style="font-size:11.5px;margin-top:3px">Esperado {{ c.esperado }} · contado {{ c.contado }} · {{ c.vendedor }}</div>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ atFin }}">
+        <div>
+          <div style="padding:12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+            <sc-for list="{{ finRows }}" as="r" hint-placeholder-count="5">
+              <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span class="text-muted">{{ r.label }}</span><span style="font-family:var(--font-heading)">{{ r.value }}</span></div>
+            </sc-for>
+            <div style="height:1px;margin:8px 0;background:var(--color-divider)"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px">Utilidad estimada</span><span style="font-family:var(--font-heading);font-size:22px;color:var(--color-accent-300)">{{ utilidad }}</span></div>
+          </div>
+          <h6 style="margin:16px 0 6px;color:var(--color-neutral-400)">Gastos del día</h6>
+          <table class="table"><thead><tr><th>Concepto</th><th>Categoría</th><th style="text-align:right">Valor</th></tr></thead><tbody>
+            <sc-for list="{{ expenseRows }}" as="g" hint-placeholder-count="4">
+              <tr><td style="font-size:13px">{{ g.label }}</td><td style="font-size:12px" class="text-muted">{{ g.cat }}</td><td style="text-align:right;font-family:var(--font-heading);font-size:13px">{{ g.value }}</td></tr>
+            </sc-for>
+          </tbody></table>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ atRep }}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <sc-for list="{{ reports }}" as="r" hint-placeholder-count="4">
+            <div>
+              <h6 style="margin:0 0 8px;color:var(--color-neutral-400)">{{ r.title }}</h6>
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <sc-for list="{{ r.rows }}" as="row" hint-placeholder-count="4">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px"><span>{{ row.label }}</span><span class="text-muted">{{ row.value }}</span></div>
+                    <div style="height:5px;border-radius:3px;background:var(--color-neutral-900)"><div style="height:5px;border-radius:3px;background:var(--color-accent);width:{{ row.pct }}"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ atCfg }}">
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <sc-for list="{{ cfgRows }}" as="c" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:8px;background:var(--color-surface);box-shadow:var(--shadow-sm)">
+              <div style="flex:1"><div style="font-size:13px">{{ c.label }}</div><div class="text-muted" style="font-size:11px">{{ c.sub }}</div></div>
+              <div class="pos-tap" onClick="{{ c.press }}" style="width:42px;height:24px;flex:none;border-radius:12px;padding:2px;background:{{ c.trackBg }};box-shadow:inset 0 0 0 1px {{ c.trackRing }};display:flex;justify-content:{{ c.justify }}">
+                <div style="width:20px;height:20px;border-radius:50%;background:{{ c.knob }}"></div>
+              </div>
+            </div>
+          </sc-for>
+          <div class="text-muted" style="font-size:11.5px;margin-top:4px">Auditoría: cada cambio de precio, ajuste de inventario y anulación queda registrado con usuario, fecha y valor anterior.</div>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+    </div>
+
+    <sc-if value="{{ showCartBar }}">
+    <div class="pos-tap" onClick="{{ goCart }}" style="margin:0 16px 8px;padding:12px 14px;border-radius:8px;display:flex;align-items:center;gap:10px;border:1px solid var(--color-accent);background:color-mix(in srgb,var(--color-accent) 14%,transparent);animation:riseIn .2s ease">
+      <i class="ph-fill ph-shopping-cart-simple" style="font-size:18px;color:var(--color-accent)"></i>
+      <span style="font-size:13px">{{ cartCount }} ítems</span>
+      <span style="margin-left:auto;font-family:var(--font-heading);font-size:18px">{{ cartTotal }}</span>
+      <i class="ph ph-arrow-right" style="font-size:16px;color:var(--color-accent)"></i>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ showPrimary }}">
+    <div style="margin:0 16px 8px">
+      <div class="pos-tap" onClick="{{ primaryPress }}" style="height:54px;display:flex;align-items:center;justify-content:center;gap:9px;border-radius:8px;border:1px solid {{ primaryBorder }};color:{{ primaryFg }};background:{{ primaryBg }};font-family:var(--font-heading);font-weight:500;font-size:16px;letter-spacing:.03em">
+        <i class="ph {{ primaryIcon }}" style="font-size:19px"></i>{{ primaryLabel }}
+      </div>
+      <sc-if value="{{ showSecondary }}">
+        <div class="pos-tap" onClick="{{ secondaryPress }}" style="margin-top:7px;height:40px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--color-divider);font-size:13px">{{ secondaryLabel }}</div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <div style="display:flex;gap:2px;padding:6px 8px 34px;border-top:1px solid var(--color-divider)">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+        <div class="pos-tap" onClick="{{ n.press }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border-radius:8px;color:{{ n.fg }}">
+          <i class="ph {{ n.icon }}" style="font-size:20px"></i>
+          <span style="font-size:10px;letter-spacing:.01em">{{ n.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ toast }}">
+    <div style="position:absolute;left:16px;right:16px;bottom:118px;z-index:80;padding:10px 12px;border-radius:8px;background:var(--color-neutral-900);box-shadow:var(--shadow-md);font-size:12.5px;animation:riseIn .2s ease">{{ toast }}</div>
+    </sc-if>
+
+  </div>
+  </x-import>
+
+  <div class="text-muted" style="max-width:860px;font-size:11.5px;line-height:1.6">
+    Precios y sabores vienen de la configuración del administrador — el vendedor nunca los edita. Las ventas confirmadas no se borran: se anulan con registro. Cada venta descuenta inventario y alimenta el dashboard, reportes y cierre de caja de esta misma pantalla.
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:900,&quot;height&quot;:1100},&quot;mostrarFavoritos&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Flujo de venta&quot;},&quot;cobroDirecto&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Flujo de venta&quot;},&quot;mostrarPromo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Flujo de venta&quot;},&quot;promoDelDia&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Piña mediano + fruta&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Flujo de venta&quot;},&quot;dashDensity&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;compacto&quot;,&quot;amplio&quot;],&quot;default&quot;:&quot;compacto&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Dashboard admin&quot;}}">
+class Component extends DCLogic {
+  SIZES = [
+    { id: 'p', label: 'Pequeño', price: 4000, vaso: 'v_peq', hielo: 0.25, pulpa: 0.06 },
+    { id: 'm', label: 'Mediano', price: 6000, vaso: 'v_med', hielo: 0.35, pulpa: 0.09 },
+    { id: 'g', label: 'Grande', price: 8000, vaso: 'v_gra', hielo: 0.5, pulpa: 0.12 },
+    { id: 'f', label: 'Familiar', price: 12000, vaso: 'v_fam', hielo: 0.9, pulpa: 0.2 },
+  ];
+  FLAVORS = [
+    { id: 'fresa', label: 'Fresa', ins: 'p_fresa' },
+    { id: 'mango', label: 'Mango', ins: 'p_mango' },
+    { id: 'maracuya', label: 'Maracuyá', ins: 'p_maracuya' },
+    { id: 'mora', label: 'Mora', ins: 'p_mora' },
+    { id: 'pina', label: 'Piña', ins: 'p_pina' },
+    { id: 'limon', label: 'Limón', ins: 'p_limon' },
+  ];
+  ADDONS = [
+    { id: 'gomitas', label: 'Gomitas', price: 1000, cost: 350, ins: 'gomitas', use: 0.03 },
+    { id: 'fruta', label: 'Fruta', price: 1500, cost: 600, ins: 'fruta', use: 0.05 },
+    { id: 'leche', label: 'Leche condensada', price: 1500, cost: 500, ins: 'leche', use: 0.08 },
+    { id: 'crema', label: 'Crema', price: 1000, cost: 300, ins: 'crema', use: 0.04 },
+    { id: 'salsa', label: 'Salsa', price: 800, cost: 250, ins: 'salsa', use: 0.02 },
+  ];
+  FAVS = [
+    { s: 'g', f: 'mango', a: ['leche'] },
+    { s: 'm', f: 'fresa', a: [] },
+    { s: 'g', f: 'maracuya', a: ['gomitas'] },
+    { s: 'f', f: 'mora', a: ['crema', 'fruta'] },
+  ];
+  METHODS = [
+    { id: 'efectivo', label: 'Efectivo', icon: 'ph-money' },
+    { id: 'transferencia', label: 'Transferencia', icon: 'ph-device-mobile' },
+    { id: 'tarjeta', label: 'Tarjeta', icon: 'ph-credit-card' },
+    { id: 'otro', label: 'Otro', icon: 'ph-dots-three-circle' },
+  ];
+  PERIODS = ['Hoy', 'Ayer', 'Esta semana', 'Este mes', 'Personalizado'];
+  ADMIN_TABS = [
+    { id: 'dash', label: 'Dashboard' }, { id: 'ventas', label: 'Ventas' },
+    { id: 'prod', label: 'Productos y precios' }, { id: 'inv', label: 'Inventario' },
+    { id: 'caja', label: 'Caja' }, { id: 'fin', label: 'Finanzas' },
+    { id: 'rep', label: 'Reportes' }, { id: 'cfg', label: 'Configuración' },
+  ];
+
+  state = {
+    role: 'vendedor', screen: 'pos', tab: 'dash', period: 'Hoy',
+    size: 'm', flavor: 'mango', addons: [],
+    cart: [], method: 'efectivo', received: '', counted: '',
+    lastSale: null, openSale: null, closed: null, busy: false, toast: null,
+    editing: null,
+    sizes: this.SIZES.map(s => Object.assign({}, s, { on: true })),
+    flavors: this.FLAVORS.map(f => Object.assign({}, f, { on: true })),
+    addons_cfg: this.ADDONS.map(a => Object.assign({}, a, { on: true })),
+    prodAdd: null, prodEdit: null, form: { name: '', price: '', cost: '' },
+    cfg: { auto: true, alertas: true, propina: false, recibo: true, anular: true },
+    inv: [
+      { id: 'hielo', label: 'Hielo', u: 'kg', q: 35, min: 10 },
+      { id: 'p_mango', label: 'Pulpa de mango', u: 'kg', q: 12, min: 5 },
+      { id: 'p_fresa', label: 'Pulpa de fresa', u: 'kg', q: 8, min: 5 },
+      { id: 'p_maracuya', label: 'Pulpa de maracuyá', u: 'kg', q: 6, min: 5 },
+      { id: 'p_mora', label: 'Pulpa de mora', u: 'kg', q: 7, min: 5 },
+      { id: 'p_pina', label: 'Pulpa de piña', u: 'kg', q: 9, min: 5 },
+      { id: 'p_limon', label: 'Pulpa de limón', u: 'kg', q: 4, min: 5 },
+      { id: 'v_peq', label: 'Vasos pequeños', u: 'unid', q: 150, min: 30 },
+      { id: 'v_med', label: 'Vasos medianos', u: 'unid', q: 118, min: 30 },
+      { id: 'v_gra', label: 'Vasos grandes', u: 'unid', q: 85, min: 20 },
+      { id: 'v_fam', label: 'Vasos familiares', u: 'unid', q: 40, min: 15 },
+      { id: 'gomitas', label: 'Gomitas', u: 'kg', q: 4, min: 1 },
+      { id: 'fruta', label: 'Fruta picada', u: 'kg', q: 5, min: 2 },
+      { id: 'leche', label: 'Leche condensada', u: 'latas', q: 6, min: 2 },
+      { id: 'crema', label: 'Crema', u: 'kg', q: 3, min: 1 },
+      { id: 'salsa', label: 'Salsa', u: 'l', q: 2, min: 1 },
+    ],
+    expenses: [
+      { label: 'Hielo (2 bultos)', cat: 'Materia prima', v: 38000 },
+      { label: 'Vasos grandes x200', cat: 'Empaques', v: 62000 },
+      { label: 'Transporte proveedor', cat: 'Transporte', v: 15000 },
+      { label: 'Energía local', cat: 'Servicios', v: 24000 },
+    ],
+    closures: [
+      { turno: 'Turno mañana', fecha: 'Hoy 14:05', vendedor: 'Juan Ospina', esperado: 312000, contado: 312000 },
+      { turno: 'Turno tarde', fecha: 'Ayer 21:10', vendedor: 'Sara Muñoz', esperado: 448000, contado: 445000 },
+      { turno: 'Turno mañana', fecha: 'Ayer 14:00', vendedor: 'Juan Ospina', esperado: 267000, contado: 269000 },
+    ],
+    sales: [],
+  };
+
+  componentDidMount() {
+    const mk = (n, hora, s, f, a, q, metodo, vendedor) => ({
+      n, hora, vendedor, metodo, estado: 'ok',
+      items: [{ s, f, a, q, unit: this.unitPrice(s, a) }],
+      total: this.unitPrice(s, a) * q,
+    });
+    this.setState({ sales: [
+      mk(1247, '13:12', 'm', 'fresa', [], 2, 'efectivo', 'Sara Muñoz'),
+      mk(1248, '13:40', 'g', 'mango', ['leche'], 1, 'transferencia', 'Sara Muñoz'),
+      mk(1249, '14:05', 'f', 'mora', ['crema', 'fruta'], 1, 'efectivo', 'Sara Muñoz'),
+      mk(1250, '14:31', 'g', 'maracuya', ['gomitas'], 2, 'efectivo', 'Sara Muñoz'),
+      mk(1251, '15:02', 'p', 'limon', [], 3, 'tarjeta', 'Sara Muñoz'),
+      mk(1252, '15:44', 'm', 'pina', ['fruta'], 1, 'efectivo', 'Sara Muñoz'),
+    ] });
+  }
+
+  fmt(n) { return '$' + Math.round(n).toLocaleString('es-CO'); }
+  size(id) { return (this.state.sizes || this.SIZES).find(s => s.id === id) || this.SIZES.find(s => s.id === id); }
+  flavor(id) { return (this.state.flavors || this.FLAVORS).find(f => f.id === id) || this.FLAVORS.find(f => f.id === id); }
+  addon(id) { return (this.state.addons_cfg || this.ADDONS).find(a => a.id === id) || this.ADDONS.find(a => a.id === id); }
+  catalog(kind) { return this.state[kind === 'sizes' ? 'sizes' : kind === 'flavors' ? 'flavors' : 'addons_cfg']; }
+  catalogKey(kind) { return kind === 'sizes' ? 'sizes' : kind === 'flavors' ? 'flavors' : 'addons_cfg'; }
+  patchItem(kind, id, patch) {
+    const key = this.catalogKey(kind);
+    this.setState({ [key]: this.state[key].map(x => x.id === id ? Object.assign({}, x, patch) : x) });
+  }
+  unitPrice(s, a) { return this.size(s).price + (a || []).reduce((t, id) => t + this.addon(id).price, 0); }
+  lineTitle(l) { return 'Granizado ' + this.size(l.s).label.toLowerCase() + ' · ' + this.flavor(l.f).label; }
+  lineSub(l) { return l.a.length ? l.a.map(id => this.addon(id).label).join(' + ') : 'Sin adiciones'; }
+  saleTotal(v) { return v.estado === 'ok' ? v.total : 0; }
+  cartTotalNum() { return this.state.cart.reduce((t, l) => t + l.unit * l.q, 0); }
+  turnSales() { return this.state.sales.filter(v => v.vendedor === 'Sara Muñoz'); }
+  byMethod(id) { return this.turnSales().filter(v => v.metodo === id).reduce((t, v) => t + this.saleTotal(v), 0); }
+  ring(on) { return on ? '1px var(--color-accent)' : '1px var(--color-divider)'; }
+  fg(on) { return on ? 'var(--color-accent)' : 'var(--color-text)'; }
+  flash(msg) { this.setState({ toast: msg }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: null }), 2200); }
+
+  addLine(s, f, a) {
+    const cart = this.state.cart.slice();
+    const key = s + f + a.slice().sort().join();
+    const hit = cart.findIndex(l => l.s + l.f + l.a.slice().sort().join() === key);
+    if (hit > -1) cart[hit] = Object.assign({}, cart[hit], { q: cart[hit].q + 1 });
+    else cart.push({ id: Date.now() + Math.random(), s, f, a, q: 1, unit: this.unitPrice(s, a) });
+    this.setState({ cart, addons: [], editing: null });
+    this.flash('Agregado: ' + this.lineTitle({ s, f, a }));
+  }
+
+  deduct(cart) {
+    const inv = this.state.inv.map(i => Object.assign({}, i));
+    const take = (id, n) => { const i = inv.find(x => x.id === id); if (i) i.q = Math.max(0, Math.round((i.q - n) * 100) / 100); };
+    cart.forEach(l => {
+      const sz = this.size(l.s);
+      take(sz.vaso, l.q); take('hielo', sz.hielo * l.q); take(this.flavor(l.f).ins, sz.pulpa * l.q);
+      l.a.forEach(id => { const ad = this.addon(id); take(ad.ins, ad.use * l.q); });
+    });
+    return inv;
+  }
+
+  confirmSale() {
+    if (this.state.busy || !this.state.cart.length) return;
+    const total = this.cartTotalNum();
+    if (this.state.method === 'efectivo' && Number(this.state.received || 0) < total) { this.flash('El dinero recibido es menor al total.'); return; }
+    this.setState({ busy: true });
+    const now = new Date();
+    const hora = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    const n = 1253 + this.state.sales.filter(v => v.n >= 1253).length;
+    const sale = { n, hora, vendedor: 'Sara Muñoz', metodo: this.state.method, estado: 'ok', items: this.state.cart, total };
+    const change = this.state.method === 'efectivo' ? Number(this.state.received || 0) - total : 0;
+    setTimeout(() => this.setState({
+      sales: [sale].concat(this.state.sales), inv: this.deduct(this.state.cart),
+      cart: [], received: '', screen: 'done', busy: false,
+      lastSale: { n, hora, total, change, metodo: this.state.method, items: this.state.cart.length },
+    }), 260);
+  }
+
+  renderVals() {
+    const st = this.state, S = st.screen, admin = st.role === 'admin';
+    const cartTotal = this.cartTotalNum();
+    const cartCount = st.cart.reduce((t, l) => t + l.q, 0);
+    const draftA = st.addons;
+    const draftPrice = this.unitPrice(st.size, draftA);
+    const turn = this.turnSales();
+    const turnTotal = turn.reduce((t, v) => t + this.saleTotal(v), 0);
+    const expected = this.byMethod('efectivo');
+    const counted = Number(st.counted || 0);
+    const diff = counted - expected;
+    const received = Number(st.received || 0);
+    const change = received - cartTotal;
+    const promoName = this.props.promoDelDia ?? 'Piña mediano + fruta';
+    const promoBase = this.unitPrice('m', ['fruta']);
+    const low = st.inv.filter(i => i.q <= i.min);
+
+    const keypad = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0', '⌫'].map(l => ({
+      label: l, press: () => {
+        const field = S === 'close' ? 'counted' : 'received';
+        const cur = st[field] || '';
+        const next = l === '⌫' ? cur.slice(0, -1) : (cur + (l === '000' ? '000' : l)).slice(0, 8);
+        this.setState({ [field]: next });
+      },
+    }));
+
+    const counts = (pick) => {
+      const map = {};
+      st.sales.forEach(v => { if (v.estado !== 'ok') return; v.items.forEach(l => pick(map, l, v)); });
+      const rows = Object.keys(map).map(k => ({ k, v: map[k] })).sort((a, b) => b.v - a.v).slice(0, 5);
+      const max = rows.length ? rows[0].v : 1;
+      return rows.map(r => ({ label: r.k, value: r.v, pct: Math.round((r.v / max) * 100) + '%' }));
+    };
+    const flavorRank = counts((m, l) => { const k = this.flavor(l.f).label; m[k] = (m[k] || 0) + l.q; });
+    const sizeRank = counts((m, l) => { const k = this.size(l.s).label; m[k] = (m[k] || 0) + l.q; });
+    const addonRank = counts((m, l) => { l.a.forEach(id => { const k = this.addon(id).label; m[k] = (m[k] || 0) + l.q; }); });
+    const methodRank = counts((m, l, v) => { const k = this.METHODS.find(x => x.id === v.metodo).label; m[k] = (m[k] || 0) + l.unit * l.q; });
+    const fmtRows = (rows, money) => rows.map(r => ({ label: r.label, value: money ? this.fmt(r.value) : r.value + ' und', pct: r.pct }));
+
+    const hours = ['10', '11', '12', '13', '14', '15', '16', '17', '18'];
+    const hourMap = {}; st.sales.forEach(v => { if (v.estado === 'ok') { const h = v.hora.slice(0, 2); hourMap[h] = (hourMap[h] || 0) + v.total; } });
+    const hourMax = Math.max.apply(null, hours.map(h => hourMap[h] || 0).concat([1]));
+
+    const gastos = st.expenses.reduce((t, g) => t + g.v, 0);
+    const ingresos = st.sales.reduce((t, v) => t + this.saleTotal(v), 0);
+    const costoProd = Math.round(ingresos * 0.34);
+    const factor = { 'Hoy': 1, 'Ayer': 0.86, 'Esta semana': 5.4, 'Este mes': 21.3, 'Personalizado': 12.1 }[st.period];
+    const nV = st.sales.filter(v => v.estado === 'ok').length;
+    const uds = st.sales.reduce((t, v) => v.estado === 'ok' ? t + v.items.reduce((s, l) => s + l.q, 0) : t, 0);
+    const ads = st.sales.reduce((t, v) => v.estado === 'ok' ? t + v.items.reduce((s, l) => s + l.a.length * l.q, 0) : t, 0);
+    const amplio = (this.props.dashDensity ?? 'compacto') === 'amplio';
+    const kpiDefs = [
+      { label: 'Ventas', value: this.fmt(ingresos * factor), delta: st.period + ' · ' + Math.round(nV * factor) + ' ventas' },
+      { label: 'Ticket promedio', value: this.fmt(ingresos / Math.max(1, nV)), delta: 'por venta' },
+      { label: 'Productos vendidos', value: Math.round(uds * factor), delta: 'granizados' },
+      { label: 'Adiciones', value: Math.round(ads * factor), delta: this.fmt(addonRank.reduce((t, r) => t + r.value, 0) * 1200) + ' aprox.' },
+      { label: 'Gastos', value: this.fmt(gastos * factor), delta: st.expenses.length + ' registros' },
+      { label: 'Utilidad estimada', value: this.fmt((ingresos - costoProd - gastos) * factor), delta: 'ventas − costo − gastos' },
+    ];
+
+    const nav = admin
+      ? [{ id: 'dash', label: 'Panel', icon: 'ph-chart-pie-slice' }, { id: 'ventas', label: 'Ventas', icon: 'ph-receipt' },
+         { id: 'inv', label: 'Inventario', icon: 'ph-package' }, { id: 'rep', label: 'Reportes', icon: 'ph-chart-line-up' }]
+      : [{ id: 'pos', label: 'Nueva venta', icon: 'ph-storefront' }, { id: 'cart', label: 'Carrito', icon: 'ph-shopping-cart-simple' },
+         { id: 'sales', label: 'Mis ventas', icon: 'ph-receipt' }, { id: 'close', label: 'Cierre', icon: 'ph-lock-simple' }];
+
+    let primary = null;
+    if (!admin && S === 'cart' && st.cart.length) primary = { label: 'COBRAR ' + this.fmt(cartTotal), icon: 'ph-currency-circle-dollar', press: () => this.setState({ screen: 'pay' }), sec: 'Seguir vendiendo', secPress: () => this.setState({ screen: 'pos' }) };
+    if (!admin && S === 'pay') primary = { label: st.busy ? 'REGISTRANDO…' : 'CONFIRMAR VENTA', icon: 'ph-check-circle', press: () => this.confirmSale(), sec: 'Volver al carrito', secPress: () => this.setState({ screen: 'cart' }) };
+    if (!admin && S === 'done') primary = { label: 'NUEVA VENTA', icon: 'ph-plus-circle', press: () => this.setState({ screen: 'pos' }), sec: 'Ver mis ventas', secPress: () => this.setState({ screen: 'sales' }) };
+    if (!admin && S === 'close' && !st.closed) primary = { label: 'CONFIRMAR CIERRE', icon: 'ph-lock-simple', press: () => { if (!st.counted) { this.flash('Ingresa el efectivo contado.'); return; } this.setState({ closed: { diff, hora: new Date().toTimeString().slice(0, 5) }, closures: [{ turno: 'Turno tarde', fecha: 'Hoy ' + new Date().toTimeString().slice(0, 5), vendedor: 'Sara Muñoz', esperado: expected, contado: counted }].concat(st.closures) }); }, sec: 'Volver a vender', secPress: () => this.setState({ screen: 'pos' }) };
+    if (!admin && S === 'close' && st.closed) primary = { label: 'ABRIR NUEVO TURNO', icon: 'ph-lock-simple-open', press: () => this.setState({ closed: null, counted: '', screen: 'pos' }) };
+
+    return {
+      headerTitle: admin ? 'Granizados Oasis' : (S === 'close' ? 'Cierre de caja' : (S === 'cart' ? 'Carrito' : (S === 'pay' ? 'Registrar pago' : (S === 'sales' ? 'Mis ventas' : (S === 'done' ? 'Venta registrada' : 'Nueva venta'))))),
+      headerSub: admin ? 'Administrador · Camilo Restrepo' : 'Sara Muñoz · turno tarde · abierto 14:00',
+      roleLabel: admin ? 'Admin' : 'Vendedor',
+      toggleRole: () => this.setState({ role: admin ? 'vendedor' : 'admin', screen: admin ? 'pos' : 'admin' }),
+      isPos: !admin && S === 'pos', isCart: !admin && S === 'cart', isPay: !admin && S === 'pay',
+      isDone: !admin && S === 'done', isSales: !admin && S === 'sales', isClose: !admin && S === 'close',
+      isAdmin: admin,
+
+      promoOn: (this.props.mostrarPromo ?? true) && !admin,
+      promoName, promoPrice: this.fmt(promoBase - 1500), promoWas: this.fmt(promoBase),
+      addPromo: () => this.addLine('m', 'pina', ['fruta']),
+      showFavs: (this.props.mostrarFavoritos ?? true),
+      favs: this.FAVS.map(f => ({
+        name: this.flavor(f.f).label + ' ' + this.size(f.s).label.toLowerCase(),
+        sub: f.a.length ? f.a.map(id => this.addon(id).label).join(' + ') : 'Sin adiciones',
+        price: this.fmt(this.unitPrice(f.s, f.a)),
+        press: () => this.addLine(f.s, f.f, f.a),
+      })),
+      sizeOpts: st.sizes.filter(s => s.on).map(s => ({ label: s.label, price: this.fmt(s.price), ring: this.ring(st.size === s.id), fg: this.fg(st.size === s.id), press: () => this.setState({ size: s.id }) })),
+      flavorOpts: st.flavors.filter(f => f.on).map(f => ({ label: f.label, ring: this.ring(st.flavor === f.id), fg: this.fg(st.flavor === f.id), press: () => this.setState({ flavor: f.id }) })),
+      addonOpts: st.addons_cfg.filter(a => a.on).map(a => {
+        const on = draftA.indexOf(a.id) > -1;
+        return { label: a.label, price: '+' + this.fmt(a.price), ring: this.ring(on), fg: this.fg(on),
+          press: () => this.setState({ addons: on ? draftA.filter(x => x !== a.id) : draftA.concat([a.id]) }) };
+      }),
+      draftLabel: this.lineTitle({ s: st.size, f: st.flavor, a: draftA }) + (draftA.length ? ' · ' + draftA.map(id => this.addon(id).label).join(' + ') : ''),
+      draftPrice: this.fmt(draftPrice),
+      addDraft: () => { this.addLine(st.size, st.flavor, draftA); if (this.props.cobroDirecto) this.setState({ screen: 'pay' }); },
+
+      cartCount, cartTotal: this.fmt(cartTotal), cartEmpty: st.cart.length === 0, cartHas: st.cart.length > 0,
+      showCartBar: !admin && S === 'pos' && st.cart.length > 0,
+      goCart: () => this.setState({ screen: 'cart' }),
+      cartLines: st.cart.map(l => ({
+        title: this.lineTitle(l), sub: this.lineSub(l), qty: l.q,
+        unit: this.fmt(l.unit), subtotal: this.fmt(l.unit * l.q),
+        inc: () => this.setState({ cart: st.cart.map(x => x.id === l.id ? Object.assign({}, x, { q: x.q + 1 }) : x) }),
+        dec: () => this.setState({ cart: st.cart.map(x => x.id === l.id ? Object.assign({}, x, { q: Math.max(1, x.q - 1) }) : x) }),
+        del: () => this.setState({ cart: st.cart.filter(x => x.id !== l.id) }),
+        edit: () => this.setState({ cart: st.cart.filter(x => x.id !== l.id), size: l.s, flavor: l.f, addons: l.a, screen: 'pos' }),
+      })),
+
+      methodOpts: this.METHODS.map(m => ({ label: m.label, icon: m.icon, ring: this.ring(st.method === m.id), fg: this.fg(st.method === m.id), press: () => this.setState({ method: m.id }) })),
+      isCash: st.method === 'efectivo',
+      quickCash: [{ n: cartTotal, l: 'Exacto' }, { n: 10000, l: '$10.000' }, { n: 20000, l: '$20.000' }, { n: 50000, l: '$50.000' }]
+        .map(q => ({ label: q.l, press: () => this.setState({ received: String(q.n) }) })),
+      receivedFmt: st.received ? this.fmt(received) : '$0',
+      changeFmt: this.fmt(Math.max(0, change)),
+      changeColor: change < 0 ? 'var(--color-neutral-400)' : 'var(--color-accent-300)',
+      keypad,
+
+      doneNum: st.lastSale ? '#' + st.lastSale.n : '', doneTime: st.lastSale ? st.lastSale.hora : '',
+      doneTotal: st.lastSale ? this.fmt(st.lastSale.total) : '', doneMethod: st.lastSale ? this.METHODS.find(m => m.id === st.lastSale.metodo).label : '',
+      doneHasChange: !!(st.lastSale && st.lastSale.change > 0), doneChange: st.lastSale ? this.fmt(st.lastSale.change) : '',
+      doneStock: 'Inventario descontado automáticamente · vasos, hielo, pulpa y adiciones',
+
+      turnStats: [
+        { label: 'Vendido', value: this.fmt(turnTotal) },
+        { label: 'Ventas', value: turn.filter(v => v.estado === 'ok').length },
+        { label: 'Efectivo', value: this.fmt(expected) },
+      ],
+      mySales: turn.map(v => ({
+        num: '#' + v.n, hora: v.hora, total: this.fmt(v.total),
+        metodo: this.METHODS.find(m => m.id === v.metodo).label,
+        tagClass: v.estado === 'ok' ? 'tag-neutral' : 'tag-outline',
+        detail: v.items.map(l => l.q + '× ' + this.lineTitle(l)).join(' · ') + (v.estado === 'ok' ? '' : ' · ANULADA'),
+        op: v.estado === 'ok' ? '1' : '0.5', open: st.openSale === v.n,
+        press: () => this.setState({ openSale: st.openSale === v.n ? null : v.n }),
+        anular: () => this.flash('Solicitud enviada al administrador · venta #' + v.n),
+      })),
+
+      closeOpen: !st.closed, closedDone: !!st.closed, closeTime: st.closed ? st.closed.hora : '',
+      closeRows: [
+        { label: 'Total de ventas', value: this.fmt(turnTotal) },
+        { label: 'Cantidad de ventas', value: turn.filter(v => v.estado === 'ok').length },
+        { label: 'Efectivo', value: this.fmt(this.byMethod('efectivo')) },
+        { label: 'Transferencias', value: this.fmt(this.byMethod('transferencia')) },
+        { label: 'Tarjetas', value: this.fmt(this.byMethod('tarjeta')) },
+        { label: 'Otros pagos', value: this.fmt(this.byMethod('otro')) },
+      ],
+      expectedFmt: this.fmt(expected), countedFmt: st.counted ? this.fmt(counted) : '$0',
+      diffFmt: (diff > 0 ? '+' : '') + this.fmt(diff), diffColor: diff === 0 ? 'var(--color-accent-300)' : 'var(--color-neutral-300)',
+
+      adminTabs: this.ADMIN_TABS.map(t => ({ label: t.label, ring: this.ring(st.tab === t.id), fg: this.fg(st.tab === t.id), press: () => this.setState({ tab: t.id }) })),
+      atDash: st.tab === 'dash', atVentas: st.tab === 'ventas', atProd: st.tab === 'prod', atInv: st.tab === 'inv',
+      atCaja: st.tab === 'caja', atFin: st.tab === 'fin', atRep: st.tab === 'rep', atCfg: st.tab === 'cfg',
+      periodOpts: this.PERIODS.map(p => ({ label: p, ring: this.ring(st.period === p), fg: this.fg(st.period === p), press: () => this.setState({ period: p }) })),
+      kpiCols: amplio ? '1fr' : '1fr 1fr',
+      kpis: kpiDefs.map(k => ({ label: k.label, value: k.value, delta: k.delta, size: amplio ? '24px' : '19px' })),
+      hourBars: hours.map(h => {
+        const v = hourMap[h] || 0;
+        return { label: h, h: Math.max(3, Math.round((v / hourMax) * 62)) + 'px', bg: v ? 'var(--color-accent)' : 'var(--color-neutral-800)' };
+      }),
+      hasLow: low.length > 0, lowList: low.map(i => i.label + ' (' + i.q + ' ' + i.u + ')').join(' · '),
+
+      allSales: st.sales.map(v => ({ num: '#' + v.n, vendedor: v.vendedor, hora: v.hora, total: this.fmt(v.total), metodo: this.METHODS.find(m => m.id === v.metodo).label, op: v.estado === 'ok' ? '1' : '0.5' })),
+      prodSections: [
+        { kind: 'sizes', title: 'Tamaños y precios', addLabel: 'Nuevo tamaño', namePh: 'Ej. Jumbo', hasPrice: true, hasCost: false },
+        { kind: 'flavors', title: 'Sabores', addLabel: 'Nuevo sabor', namePh: 'Ej. Coco', hasPrice: false, hasCost: false },
+        { kind: 'addons', title: 'Adiciones', addLabel: 'Nueva adición', namePh: 'Ej. Chocolate', hasPrice: true, hasCost: true },
+      ].map(sec => {
+        const key = this.catalogKey(sec.kind);
+        return {
+          title: sec.title, addLabel: sec.addLabel, namePh: sec.namePh,
+          hasPrice: sec.hasPrice, hasCost: sec.hasCost,
+          adding: st.prodAdd === sec.kind,
+          newName: st.form.name, newPrice: st.form.price, newCost: st.form.cost,
+          onNewName: e => this.setState({ form: Object.assign({}, st.form, { name: e.target.value }) }),
+          onNewPrice: e => this.setState({ form: Object.assign({}, st.form, { price: e.target.value }) }),
+          onNewCost: e => this.setState({ form: Object.assign({}, st.form, { cost: e.target.value }) }),
+          addPress: () => this.setState({ prodAdd: st.prodAdd === sec.kind ? null : sec.kind, prodEdit: null, form: { name: '', price: '', cost: '' } }),
+          cancel: () => this.setState({ prodAdd: null, form: { name: '', price: '', cost: '' } }),
+          save: () => {
+            const name = (st.form.name || '').trim();
+            if (!name) { this.flash('Escribe un nombre.'); return; }
+            const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_') + '_' + Date.now().toString().slice(-4);
+            const price = Number(st.form.price || 0);
+            let item;
+            if (sec.kind === 'sizes') item = { id, label: name, price, vaso: 'v_gra', hielo: 0.5, pulpa: 0.12, on: true };
+            else if (sec.kind === 'flavors') item = { id, label: name, ins: 'p_mango', on: true };
+            else item = { id, label: name, price, cost: Number(st.form.cost || 0), ins: 'fruta', use: 0.04, on: true };
+            this.setState({ [key]: st[key].concat([item]), prodAdd: null, form: { name: '', price: '', cost: '' } });
+            this.flash(sec.addLabel.replace('Nuevo', 'Creado').replace('Nueva', 'Creada') + ': ' + name);
+          },
+          rows: st[key].map(it => {
+            const editing = st.prodEdit === sec.kind + ':' + it.id;
+            return {
+              label: it.label,
+              meta: sec.kind === 'sizes' ? this.fmt(it.price) : (sec.kind === 'addons' ? this.fmt(it.price) + ' · costo ' + this.fmt(it.cost) : 'Sin costo adicional'),
+              op: it.on ? '1' : '0.55',
+              status: it.on ? 'Visible' : 'Oculto',
+              tagClass: it.on ? 'tag-neutral' : 'tag-outline',
+              eyeIcon: it.on ? 'ph-eye' : 'ph-eye-slash',
+              eyeFg: it.on ? 'var(--color-accent)' : 'var(--color-neutral-500)',
+              toggle: () => { this.patchItem(sec.kind, it.id, { on: !it.on }); this.flash((it.on ? 'Oculto para el vendedor: ' : 'Visible para el vendedor: ') + it.label); },
+              edit: () => this.setState({ prodEdit: editing ? null : sec.kind + ':' + it.id, prodAdd: null, form: { name: it.label, price: String(it.price || ''), cost: String(it.cost || '') } }),
+              editing, hasPrice: sec.hasPrice,
+              nameVal: st.form.name, priceVal: st.form.price,
+              onName: e => this.setState({ form: Object.assign({}, st.form, { name: e.target.value }) }),
+              onPrice: e => this.setState({ form: Object.assign({}, st.form, { price: e.target.value }) }),
+              save: () => {
+                const patch = { label: (st.form.name || it.label).trim() };
+                if (sec.hasPrice) patch.price = Number(st.form.price || it.price);
+                this.patchItem(sec.kind, it.id, patch);
+                this.setState({ prodEdit: null });
+                this.flash('Actualizado: ' + patch.label);
+              },
+              cancel: () => this.setState({ prodEdit: null }),
+            };
+          }),
+        };
+      }),
+      invRows: st.inv.map(i => ({ label: i.label, qty: i.q + ' ' + i.u, min: i.min + ' ' + i.u, flag: i.q <= i.min ? '  ⚠ bajo' : '' })),
+      closures: st.closures.map(c => {
+        const d = c.contado - c.esperado;
+        return { turno: c.turno, fecha: c.fecha, vendedor: c.vendedor, esperado: this.fmt(c.esperado), contado: this.fmt(c.contado),
+          diff: (d > 0 ? '+' : '') + this.fmt(d), color: d === 0 ? 'var(--color-accent-300)' : 'var(--color-neutral-300)' };
+      }),
+      finRows: [
+        { label: 'Ventas totales', value: this.fmt(ingresos) },
+        { label: 'Efectivo', value: this.fmt(st.sales.filter(v => v.metodo === 'efectivo').reduce((t, v) => t + this.saleTotal(v), 0)) },
+        { label: 'Transferencias', value: this.fmt(st.sales.filter(v => v.metodo === 'transferencia').reduce((t, v) => t + this.saleTotal(v), 0)) },
+        { label: 'Costo de productos', value: '− ' + this.fmt(costoProd) },
+        { label: 'Gastos', value: '− ' + this.fmt(gastos) },
+      ],
+      utilidad: this.fmt(ingresos - costoProd - gastos),
+      expenseRows: st.expenses.map(g => ({ label: g.label, cat: g.cat, value: this.fmt(g.v) })),
+      reports: [
+        { title: 'Sabores más vendidos', rows: fmtRows(flavorRank, false) },
+        { title: 'Tamaños más vendidos', rows: fmtRows(sizeRank, false) },
+        { title: 'Adiciones más vendidas', rows: fmtRows(addonRank, false) },
+        { title: 'Métodos de pago', rows: fmtRows(methodRank, true) },
+      ],
+      cfgRows: Object.keys(st.cfg).map(k => {
+        const on = st.cfg[k];
+        const meta = { auto: ['Descuento automático de inventario', 'Aplica la receta de cada producto'], alertas: ['Alertas de inventario bajo', 'Notifica al llegar al mínimo'], propina: ['Propina sugerida', 'Muestra opción al cobrar'], recibo: ['Recibo digital', 'Enviar por WhatsApp'], anular: ['Anulación requiere administrador', 'El vendedor solo puede solicitarla'] }[k];
+        return { label: meta[0], sub: meta[1],
+          trackBg: on ? 'color-mix(in srgb,var(--color-accent) 26%,transparent)' : 'transparent',
+          trackRing: on ? 'var(--color-accent)' : 'var(--color-divider)',
+          justify: on ? 'flex-end' : 'flex-start',
+          knob: on ? 'var(--color-accent)' : 'var(--color-neutral-600)',
+          press: () => this.setState({ cfg: Object.assign({}, st.cfg, { [k]: !on }) }) };
+      }),
+
+      navItems: nav.map(n => {
+        const on = admin ? st.tab === n.id : S === n.id;
+        return { label: n.label, icon: n.icon, fg: on ? 'var(--color-accent)' : 'var(--color-neutral-500)',
+          press: () => admin ? this.setState({ tab: n.id }) : this.setState({ screen: n.id }) };
+      }),
+
+      showPrimary: !!primary,
+      primaryLabel: primary ? primary.label : '', primaryIcon: primary ? primary.icon : '',
+      primaryPress: primary ? primary.press : null,
+      primaryBg: 'color-mix(in srgb,var(--color-accent) 14%,transparent)',
+      primaryBorder: 'var(--color-accent)', primaryFg: 'var(--color-accent)',
+      showSecondary: !!(primary && primary.sec), secondaryLabel: primary && primary.sec ? primary.sec : '',
+      secondaryPress: primary && primary.secPress ? primary.secPress : null,
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

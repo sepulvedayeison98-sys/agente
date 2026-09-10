@@ -1,0 +1,254 @@
+// Prisma schema — Granizados Oasis POS
+// Ver docs en .agents/skills/prisma-cli y .agents/skills/prisma-client-api
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  VENDEDOR
+  ADMINISTRADOR
+}
+
+enum SaleStatus {
+  OK
+  ANULADA
+}
+
+enum MovementType {
+  ENTRADA
+  SALIDA
+  AJUSTE
+  VENTA
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TRANSFERENCIA
+  TARJETA
+  OTRO
+}
+
+model Branch {
+  id           String        @id @default(cuid())
+  name         String
+  isDefault    Boolean       @default(false)
+  users        User[]
+  sales        Sale[]
+  cashClosures CashClosure[]
+  createdAt    DateTime      @default(now())
+}
+
+model User {
+  id                 String               @id @default(cuid())
+  name               String
+  username           String               @unique
+  pinHash            String
+  role               Role
+  active             Boolean              @default(true)
+  branchId           String
+  branch             Branch               @relation(fields: [branchId], references: [id])
+  sales              Sale[]
+  auditLogs          AuditLog[]
+  inventoryMovements InventoryMovement[]
+  cashClosures       CashClosure[]
+  createdAt          DateTime             @default(now())
+}
+
+model Product {
+  id     String  @id @default(cuid())
+  type   String // "granizado"; extensible a helado, malteada, combo...
+  name   String
+  active Boolean @default(true)
+  sizes  Size[]
+}
+
+model Size {
+  id          String       @id @default(cuid())
+  productId   String
+  product     Product      @relation(fields: [productId], references: [id])
+  name        String
+  price       Int // COP, sin decimales
+  visible     Boolean      @default(true)
+  active      Boolean      @default(true)
+  recipeLines RecipeLine[]
+  saleItems   SaleItem[]
+  createdAt   DateTime     @default(now())
+}
+
+model Flavor {
+  id              String         @id @default(cuid())
+  name            String
+  imageUrl        String?
+  visible         Boolean        @default(true)
+  active          Boolean        @default(true)
+  inventoryItemId String?
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  saleItems       SaleItem[]
+  createdAt       DateTime       @default(now())
+}
+
+model Addon {
+  id                 String          @id @default(cuid())
+  name               String
+  price              Int
+  cost               Int
+  visible            Boolean         @default(true)
+  active             Boolean         @default(true)
+  inventoryItemId    String?
+  inventoryItem      InventoryItem?  @relation(fields: [inventoryItemId], references: [id])
+  useQuantityPerUnit Float           @default(0) // consumo de insumo por unidad vendida de la adición
+  saleItemAddons     SaleItemAddon[]
+  createdAt          DateTime        @default(now())
+}
+
+model PriceHistory {
+  id         String   @id @default(cuid())
+  entityType String // "size" | "addon"
+  entityId   String
+  oldValue   Int
+  newValue   Int
+  userId     String
+  createdAt  DateTime @default(now())
+}
+
+model Sale {
+  id             String        @id @default(cuid())
+  number         Int           @unique
+  branchId       String
+  branch         Branch        @relation(fields: [branchId], references: [id])
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  method         PaymentMethod
+  total          Int
+  status         SaleStatus    @default(OK)
+  voidReason     String?
+  voidedById     String?
+  idempotencyKey String        @unique
+  items          SaleItem[]
+  cashMovements  CashMovement[]
+  createdAt      DateTime      @default(now())
+}
+
+model SaleItem {
+  id         String          @id @default(cuid())
+  saleId     String
+  sale       Sale            @relation(fields: [saleId], references: [id])
+  sizeId     String
+  size       Size            @relation(fields: [sizeId], references: [id])
+  flavorId   String
+  flavor     Flavor          @relation(fields: [flavorId], references: [id])
+  quantity   Int
+  unitPrice  Int // precio congelado al momento de la venta
+  sizeName   String // snapshot
+  flavorName String // snapshot
+  addons     SaleItemAddon[]
+}
+
+model SaleItemAddon {
+  id         String   @id @default(cuid())
+  saleItemId String
+  saleItem   SaleItem @relation(fields: [saleItemId], references: [id])
+  addonId    String
+  addon      Addon    @relation(fields: [addonId], references: [id])
+  price      Int // precio congelado al momento de la venta
+  addonName  String // snapshot
+}
+
+model InventoryItem {
+  id          String              @id @default(cuid())
+  name        String
+  unit        String // kg, unid, latas, l
+  quantity    Float
+  minimum     Float
+  flavors     Flavor[]
+  addons      Addon[]
+  movements   InventoryMovement[]
+  recipeLines RecipeLine[]
+}
+
+model InventoryMovement {
+  id        String        @id @default(cuid())
+  itemId    String
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+  type      MovementType
+  quantity  Float
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  reason    String
+  saleId    String?
+  createdAt DateTime      @default(now())
+}
+
+// Consumo de insumos por unidad vendida de un tamaño: vaso y hielo usan un
+// insumo fijo (inventoryItemId); la pulpa depende del sabor vendido, por eso
+// resolveItemFromFlavor=true indica que el insumo real es el de Flavor.inventoryItem
+// y quantityPerUnit sigue viniendo del tamaño.
+model RecipeLine {
+  id                    String         @id @default(cuid())
+  sizeId                String
+  size                  Size           @relation(fields: [sizeId], references: [id])
+  inventoryItemId       String?
+  inventoryItem         InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  resolveItemFromFlavor Boolean        @default(false)
+  quantityPerUnit       Float
+}
+
+model Expense {
+  id         String          @id @default(cuid())
+  concept    String
+  categoryId String
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
+  value      Int
+  date       DateTime
+  method     PaymentMethod
+  note       String?
+  createdAt  DateTime        @default(now())
+}
+
+model ExpenseCategory {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  expenses Expense[]
+}
+
+model CashClosure {
+  id               String         @id @default(cuid())
+  shift            String
+  userId           String
+  user             User           @relation(fields: [userId], references: [id])
+  branchId         String
+  branch           Branch         @relation(fields: [branchId], references: [id])
+  openedAt         DateTime
+  closedAt         DateTime
+  expectedByMethod Json // { efectivo, transferencia, tarjeta, otro }
+  counted          Int
+  difference       Int
+  movements        CashMovement[]
+}
+
+model CashMovement {
+  id            String      @id @default(cuid())
+  cashClosureId String
+  cashClosure   CashClosure @relation(fields: [cashClosureId], references: [id])
+  saleId        String?
+  sale          Sale?       @relation(fields: [saleId], references: [id])
+  amount        Int
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String // "anular_venta" | "ajuste_inventario" | "cambio_precio" | ...
+  entity    String
+  entityId  String
+  oldValue  Json?
+  newValue  Json?
+  createdAt DateTime @default(now())
+}
