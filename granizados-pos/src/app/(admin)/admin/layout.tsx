@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/dal";
 import { AppShell } from "@/components/shell/app-shell";
 import { AdminTabs } from "@/components/shell/admin-tabs";
 import { RoleSwitch } from "@/components/shell/role-switch";
+import { LogoutButton } from "@/components/shell/logout-button";
 import type { NavItem } from "@/components/shell/bottom-nav";
 
 const NAV: NavItem[] = [
@@ -19,7 +20,12 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
       title="Granizados Oasis"
       subtitle={`Administrador · ${session.name}`}
       nav={NAV}
-      headerAction={<RoleSwitch to="pos" />}
+      headerAction={
+        <>
+          <RoleSwitch to="pos" />
+          <LogoutButton />
+        </>
+      }
     >
       <AdminTabs />
       {children}

@@ -2,15 +2,23 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { encrypt, SESSION_COOKIE } from "@/lib/session-token";
+import {
+  decrypt,
+  encrypt,
+  SESSION_COOKIE,
+  SESSION_MS,
+} from "@/lib/session-token";
 import { proxy } from "@/proxy";
 
 beforeAll(() => {
   process.env.SESSION_SECRET = "secreto-solo-para-pruebas";
 });
 
-async function cookieFor(role: "VENDEDOR" | "ADMINISTRADOR") {
-  const expiresAt = new Date(Date.now() + 60_000);
+async function cookieFor(
+  role: "VENDEDOR" | "ADMINISTRADOR",
+  lifetimeMs = 60_000,
+) {
+  const expiresAt = new Date(Date.now() + lifetimeMs);
   return encrypt(
     { userId: "u1", role, branchId: "b1", name: "Prueba" },
     expiresAt,
@@ -136,5 +144,59 @@ describe("el vendedor no entra al panel del administrador", () => {
       const source = readFileSync(file, "utf8");
       expect(source, relative(ADMIN_DIR, file)).toContain("requireAdmin");
     }
+  });
+});
+
+describe("la sesión se cierra sola", () => {
+  it("un token vencido manda al login", async () => {
+    // `jose` no acepta una expiración pasada al firmar, así que se firma con
+    // una vigencia mínima y se deja pasar el segundo que la vence.
+    const token = await cookieFor("VENDEDOR", 1000);
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 2000);
+
+    const response = await proxy(requestTo("/pos", token));
+
+    vi.useRealTimers();
+    expect(redirectTarget(response)).toContain("/login");
+  });
+
+  it("una sesión recién abierta no se vuelve a firmar en cada pantalla", async () => {
+    const token = await cookieFor("VENDEDOR", SESSION_MS);
+
+    const response = await proxy(requestTo("/pos", token));
+
+    expect(response.cookies.get(SESSION_COOKIE)).toBeUndefined();
+  });
+
+  it("usar la app le devuelve el tiempo completo a la sesión", async () => {
+    // Le queda poco: la siguiente pantalla debe renovarla.
+    const token = await cookieFor("VENDEDOR", 60_000);
+
+    const response = await proxy(requestTo("/pos", token));
+    const renewed = response.cookies.get(SESSION_COOKIE);
+
+    expect(renewed).toBeDefined();
+    const payload = await decrypt(renewed!.value);
+    const remaining = payload!.exp! * 1000 - Date.now();
+    expect(remaining).toBeGreaterThan(SESSION_MS / 2);
+  });
+
+  it("renovar no le cambia el rol a nadie", async () => {
+    const token = await cookieFor("VENDEDOR", 60_000);
+
+    const response = await proxy(requestTo("/pos", token));
+    const payload = await decrypt(response.cookies.get(SESSION_COOKIE)!.value);
+
+    expect(payload).toMatchObject({ userId: "u1", role: "VENDEDOR" });
+  });
+
+  it("no renueva la sesión de quien fue rechazado del panel", async () => {
+    const token = await cookieFor("VENDEDOR", 60_000);
+
+    const response = await proxy(requestTo("/admin/dashboard", token));
+
+    expect(redirectTarget(response)).toContain("/pos");
+    expect(response.cookies.get(SESSION_COOKIE)).toBeUndefined();
   });
 });

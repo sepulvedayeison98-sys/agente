@@ -4,12 +4,12 @@ import {
   decrypt,
   encrypt,
   SESSION_COOKIE,
-  SESSION_DAYS,
+  SESSION_MS,
   type SessionPayload,
 } from "@/lib/session-token";
 
 export async function createSession(payload: SessionPayload) {
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + SESSION_MS);
   const token = await encrypt(payload, expiresAt);
   const cookieStore = await cookies();
 

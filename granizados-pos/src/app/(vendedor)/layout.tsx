@@ -3,6 +3,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import type { NavItem } from "@/components/shell/bottom-nav";
 import { ToastProvider } from "@/components/vendedor/toast";
 import { RoleSwitch } from "@/components/shell/role-switch";
+import { LogoutButton } from "@/components/shell/logout-button";
 
 const NAV: NavItem[] = [
   { href: "/pos", label: "Nueva venta", icon: "storefront" },
@@ -23,7 +24,10 @@ export default async function VendedorLayout({ children }: LayoutProps<"/">) {
         }`}
         nav={NAV}
         headerAction={
-          session.role === "ADMINISTRADOR" ? <RoleSwitch to="admin" /> : null
+          <>
+            {session.role === "ADMINISTRADOR" ? <RoleSwitch to="admin" /> : null}
+            <LogoutButton />
+          </>
         }
       >
         {children}

@@ -2,7 +2,19 @@ import { SignJWT, jwtVerify } from "jose";
 import type { Role } from "@/generated/prisma/enums";
 
 export const SESSION_COOKIE = "granizados_session";
-export const SESSION_DAYS = 7;
+
+/**
+ * La sesión dura dos horas sin actividad y se renueva sola mientras se use.
+ * Un turno completo no la corta; un teléfono que quedó abierto en el mostrador
+ * al cerrar sí queda cerrado.
+ */
+export const SESSION_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Solo se vuelve a firmar cuando ya se gastó la mitad del tiempo: renovar en
+ * cada toque sería firmar decenas de veces por venta sin ganar nada.
+ */
+export const SESSION_RENEW_AFTER_MS = SESSION_MS / 2;
 
 export type SessionPayload = {
   userId: string;

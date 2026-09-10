@@ -32,6 +32,14 @@ Creados por el seed. **Cambiar los PIN antes de usar en producción.**
 | `helen`   | 1234 | Vendedor      |
 | `juan`    | 1234 | Vendedor      |
 
+## Sesión
+
+Dura **2 horas de inactividad** y se renueva sola en cada pantalla que se abre:
+quien está vendiendo no se queda por fuera, y un teléfono que quedó abierto en
+el mostrador amanece cerrado. El botón **Salir** del encabezado la cierra de
+inmediato —pide un segundo toque para confirmar— y de paso borra el carrito
+guardado en el navegador, para que el siguiente turno arranque limpio.
+
 ## Estructura
 
 ```
