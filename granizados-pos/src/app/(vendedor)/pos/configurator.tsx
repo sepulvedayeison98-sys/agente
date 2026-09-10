@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
+  ListChecks,
   Plus,
   PlusCircle,
   ShoppingCartSimple,
@@ -124,6 +125,11 @@ export function Configurator({
     on
       ? "color-mix(in srgb, var(--color-accent) 24%, var(--color-surface))"
       : "var(--color-surface)";
+
+  // Poner las cinco adiciones era cinco toques. El botón las pone o las quita
+  // de una, y cambia de nombre para que se sepa qué va a hacer al tocarlo.
+  const allAddonsOn = addons.length > 0 && addonIds.length === addons.length;
+  const addonsTotal = addons.reduce((total, option) => total + option.price, 0);
 
   return (
     // flex-1 para que el resumen, con mt-auto, caiga al pie de la pantalla en
@@ -271,7 +277,38 @@ export function Configurator({
           })}
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-[6px]">
+        {addons.length ? (
+          <div className="mb-[6px] mt-[10px] flex items-center justify-between gap-3">
+            <h3 className="text-[12px] font-medium text-[var(--color-neutral-400)]">
+              Adiciones
+            </h3>
+            {addons.length > 1 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setAddonIds(allAddonsOn ? [] : addons.map((a) => a.id))
+                }
+                className="pos-tap flex flex-none items-center gap-[5px] rounded-[var(--radius-md)] px-[10px] py-[5px] text-[11.5px]"
+                style={{
+                  boxShadow: ring(allAddonsOn),
+                  color: fg(allAddonsOn),
+                  background: bg(allAddonsOn),
+                  fontWeight: allAddonsOn ? 600 : 400,
+                }}
+              >
+                <ListChecks size={14} />
+                {allAddonsOn ? "Quitar todas" : "Todas"}
+                {allAddonsOn ? null : (
+                  <span className="text-[var(--color-neutral-400)]">
+                    +{formatCOP(addonsTotal)}
+                  </span>
+                )}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-[6px]">
           {addons.map((option) => {
             const on = addonIds.includes(option.id);
             return (
