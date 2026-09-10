@@ -38,7 +38,7 @@ const SIZES = [
 ];
 
 // El color identifica el sabor de un vistazo cuando hay fila. Ninguno cae
-// cerca del morado del acento, que significa "seleccionado" y nada más.
+// cerca del acento, que significa "seleccionado" y nada más.
 const FLAVORS = [
   { id: "fresa", name: "Fresa", item: "p_fresa", color: "#ff6b81" },
   { id: "mango", name: "Mango", item: "p_mango", color: "#ff9838" },

@@ -10,6 +10,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Granizados Oasis POS",
   description: "Punto de venta y administración para Granizados Oasis",
+  // Al agregarla a la pantalla de inicio se abre a pantalla completa con el
+  // logo como icono, que es como se va a usar en el mostrador.
+  appleWebApp: { capable: true, title: "Oasis", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
@@ -17,6 +20,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: "#161826",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

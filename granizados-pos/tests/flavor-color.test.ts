@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { resetDatabase } from "./reset";
@@ -78,14 +79,20 @@ describe("color del sabor", () => {
 
   it("rechaza un color fuera de la paleta", async () => {
     // El valor llega del navegador: uno cualquiera podría no leerse sobre el
-    // fondo oscuro o confundirse con el morado del acento.
+    // fondo oscuro o confundirse con el color del acento.
     await createCatalogItem("flavors", { name: "Coco", color: "#000000" });
 
     expect((await flavor("Coco")).color).toBeNull();
   });
 
   it("ningún color de la paleta es el acento", () => {
-    expect(FLAVOR_COLORS.map((c) => c.value)).not.toContain("#9184d9");
+    // El acento se lee de los tokens, no se copia aquí: si mañana cambia el
+    // color de la marca, esta prueba sigue comprobando lo que dice comprobar.
+    const css = readFileSync("src/app/globals.css", "utf8");
+    const accent = css.match(/--color-accent:\s*(#[0-9a-f]{6})/i)?.[1];
+
+    expect(accent).toBeTruthy();
+    expect(FLAVOR_COLORS.map((c) => c.value)).not.toContain(accent!.toLowerCase());
   });
 
   it("la paleta no tiene colores repetidos", () => {

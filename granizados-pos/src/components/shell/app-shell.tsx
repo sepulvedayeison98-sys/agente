@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { BottomNav, type NavItem } from "./bottom-nav";
 
 type AppShellProps = {
@@ -20,7 +21,15 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
-      <header className="flex items-center gap-[10px] px-4 pb-[10px] pt-[6px]">
+      <header className="flex items-center gap-[9px] px-4 pb-[10px] pt-[6px]">
+        <Image
+          src="/logo-oasis-sm.png"
+          alt=""
+          width={132}
+          height={98}
+          priority
+          className="h-[30px] w-auto flex-none"
+        />
         <div className="min-w-0 flex-1">
           <div className="font-[family-name:var(--font-heading)] text-[17px] font-medium tracking-[-0.015em]">
             {title}

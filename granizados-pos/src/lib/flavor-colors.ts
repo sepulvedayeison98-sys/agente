@@ -2,7 +2,7 @@
  * Paleta cerrada para los sabores. Es una lista fija y no un selector libre
  * por dos razones: en un teléfono elegir de una rejilla es más rápido que
  * afinar un tono, y así ningún sabor termina con un color que no se lea sobre
- * el fondo oscuro o que se confunda con el morado del acento, que significa
+ * el fondo oscuro o que se confunda con el acento, que significa
  * "seleccionado" y nada más.
  */
 export const FLAVOR_COLORS = [

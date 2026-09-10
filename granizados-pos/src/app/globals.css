@@ -12,16 +12,20 @@
   --color-text: #e9e9ed;
   --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
 
-  --color-accent: #9184d9;
-  --color-accent-100: #f5f4ff;
-  --color-accent-200: #e7e5fe;
-  --color-accent-300: #d2cefd;
-  --color-accent-400: #b5abfc;
-  --color-accent-500: #968ae0;
-  --color-accent-600: #796cbf;
-  --color-accent-700: #5d5294;
-  --color-accent-800: #423a6a;
-  --color-accent-900: #2b2741;
+  /* Acento tomado del magenta del logo (el de "GRANIZADOS" y los pitillos).
+     El verde neón, que es el color dominante de la marca, se reserva para
+     "correcto": así el color más presente del logo aparece cuando la caja
+     cuadra, y el acento nunca compite con los tres colores con significado. */
+  --color-accent: #e740c4;
+  --color-accent-100: #fdf2fb;
+  --color-accent-200: #fbdff4;
+  --color-accent-300: #f6bfe9;
+  --color-accent-400: #f08ed9;
+  --color-accent-500: #e740c4;
+  --color-accent-600: #c22ea3;
+  --color-accent-700: #96257e;
+  --color-accent-800: #661a56;
+  --color-accent-900: #3a1031;
 
   --color-neutral-100: #f3f5fe;
   --color-neutral-200: #e4e7f5;
@@ -34,12 +38,17 @@
   --color-neutral-900: #292b31;
 
   /* Colores con significado. Deliberadamente separados del acento: hasta ahora
-     el morado marcaba lo seleccionado Y avisaba de lo urgente, así que el ojo
+     el acento marcaba lo seleccionado Y avisaba de lo urgente, así que el ojo
      no podía distinguir "esto elegiste" de "esto está mal". Elegidos claros y
      algo desaturados para sostener el contraste sobre #161826 sin vibrar. */
-  --color-success: #5ed6a0;
-  --color-warning: #f0b757;
-  --color-danger: #ff7b6e;
+  --color-success: #5bd65b;
+  --color-warning: #ffb020;
+  --color-danger: #ff5a4d;
+
+  /* Los otros dos neones del logo. No significan estado: identifican la marca
+     en la promo y en la cabecera, donde no hay nada que señalar. */
+  --color-brand-green: #5bd65b;
+  --color-brand-cyan: #3dd0f4;
 
   --font-heading: var(--font-inter), "Inter", system-ui, sans-serif;
   --font-body: var(--font-inter), "Inter", system-ui, sans-serif;
@@ -72,6 +81,8 @@
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
   --color-danger: var(--color-danger);
+  --color-brand-green: var(--color-brand-green);
+  --color-brand-cyan: var(--color-brand-cyan);
 
   --color-accent: var(--color-accent);
   --color-accent-100: var(--color-accent-100);

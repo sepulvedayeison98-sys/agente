@@ -265,7 +265,7 @@ export async function toggleCatalogVisibility(
 /**
  * Solo se aceptan los colores de la paleta. El valor llega del navegador, así
  * que uno cualquiera podría no leerse sobre el fondo oscuro o confundirse con
- * el morado del acento.
+ * el color del acento.
  */
 function cleanColor(value: string | null | undefined): string | null {
   if (!value) return null;

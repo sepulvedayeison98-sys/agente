@@ -133,13 +133,14 @@ export function Configurator({
         <div
           className="flex items-center gap-3 rounded-[var(--radius-md)] px-3 py-[11px]"
           style={{
-            background: "var(--color-accent-900)",
+            background:
+              "linear-gradient(100deg, color-mix(in srgb, var(--color-brand-green) 16%, transparent), color-mix(in srgb, var(--color-accent) 20%, transparent) 62%, color-mix(in srgb, var(--color-brand-cyan) 16%, transparent))",
             boxShadow: "inset 0 0 0 1px var(--color-accent-700)",
           }}
         >
-          <Sparkle size={20} weight="fill" className="text-[var(--color-accent-300)]" />
+          <Sparkle size={20} weight="fill" className="text-[var(--color-brand-green)]" />
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--color-accent-300)]">
+            <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--color-brand-cyan)]">
               Promo del día
             </div>
             <div className="font-[family-name:var(--font-heading)] text-[15px] font-medium">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { LockSimple, SignIn } from "@phosphor-icons/react";
+import Image from "next/image";
+import { SignIn } from "@phosphor-icons/react";
 import { Keypad } from "@/components/ui/keypad";
 import { login, type LoginState } from "@/server/actions/auth";
 
@@ -20,19 +21,18 @@ export function LoginForm() {
       action={formAction}
       className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-4 pb-8 pt-16"
     >
-      <div className="mb-8 text-center">
-        <div
-          className="mx-auto grid size-[68px] place-items-center rounded-full border border-[var(--color-accent)]"
-          style={{
-            background: "color-mix(in srgb, var(--color-accent) 14%, transparent)",
-          }}
-        >
-          <LockSimple size={28} className="text-[var(--color-accent)]" />
-        </div>
-        <h1 className="mt-4 font-[family-name:var(--font-heading)] text-[22px] font-medium">
-          Granizados Oasis
-        </h1>
-        <p className="text-[12px] text-[var(--color-neutral-400)]">
+      <div className="mb-7 text-center">
+        {/* El logo es el neón de la marca: ya trae su propio resplandor, así
+            que no lleva marco ni fondo que compitan con él. */}
+        <Image
+          src="/logo-oasis.png"
+          alt="Granizados Oasis"
+          width={440}
+          height={469}
+          priority
+          className="mx-auto h-auto w-[186px]"
+        />
+        <p className="mt-3 text-[12px] text-[var(--color-neutral-400)]">
           Ingresa con tu usuario y PIN
         </p>
       </div>
