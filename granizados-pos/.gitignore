@@ -58,3 +58,7 @@ next-env.d.ts
 # base de datos SQLite local (raíz del proyecto)
 /dev.db
 /dev.db-journal
+
+# base de datos de pruebas
+/tests/*.db
+/tests/*.db-journal
