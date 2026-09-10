@@ -29,6 +29,7 @@ export type CatalogRow = {
   useQuantityPerUnit?: number;
   recipe?: Recipe;
   color?: string | null;
+  isLiquor?: boolean;
 };
 
 export type InventoryOption = { id: string; name: string; unit: string };
@@ -43,6 +44,7 @@ type Props = {
   hasInsumo?: boolean;
   hasConsumo?: boolean;
   hasColor?: boolean;
+  hasLiquor?: boolean;
   hasRecipe?: boolean;
   rows: CatalogRow[];
   inventory: InventoryOption[];
@@ -58,6 +60,7 @@ export function CatalogSection({
   hasInsumo = false,
   hasConsumo = false,
   hasColor = false,
+  hasLiquor = false,
   hasRecipe = false,
   rows,
   inventory,
@@ -67,6 +70,7 @@ export function CatalogSection({
   const [linking, setLinking] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", price: "", cost: "" });
   const [link, setLink] = useState({
+    isLiquor: false,
     color: "",
     inventoryItemId: "",
     useQuantityPerUnit: "",
@@ -90,6 +94,7 @@ export function CatalogSection({
     setEditing(null);
     setError(null);
     setLink({
+      isLiquor: row.isLiquor ?? false,
       color: row.color ?? "",
       inventoryItemId: row.inventoryItemId ?? "",
       useQuantityPerUnit: row.useQuantityPerUnit ? String(row.useQuantityPerUnit) : "",
@@ -105,6 +110,7 @@ export function CatalogSection({
     startTransition(async () => {
       const result = await updateCatalogLink(kind, id, {
         color: hasColor ? link.color || null : undefined,
+        isLiquor: hasLiquor ? link.isLiquor : undefined,
         inventoryItemId: link.inventoryItemId || null,
         useQuantityPerUnit: Number(link.useQuantityPerUnit || 0),
         recipe: hasRecipe
@@ -446,6 +452,48 @@ export function CatalogSection({
                           ))}
                         </div>
                       </>
+                    ) : null}
+
+                    {hasLiquor ? (
+                      <button
+                        type="button"
+                        onClick={() => setLink({ ...link, isLiquor: !link.isLiquor })}
+                        aria-pressed={link.isLiquor}
+                        className="pos-tap mb-[10px] flex w-full items-center gap-[9px] rounded-[var(--radius-md)] px-[10px] py-[8px] text-left"
+                        style={{
+                          boxShadow: link.isLiquor
+                            ? "inset 0 0 0 1px var(--color-warning)"
+                            : "inset 0 0 0 1px var(--color-divider)",
+                          background: link.isLiquor
+                            ? "color-mix(in srgb, var(--color-warning) 12%, transparent)"
+                            : "transparent",
+                        }}
+                      >
+                        <span
+                          className="grid size-[18px] flex-none place-items-center rounded-[var(--radius-sm)] text-[11px]"
+                          style={{
+                            boxShadow: link.isLiquor
+                              ? "inset 0 0 0 1px var(--color-warning)"
+                              : "inset 0 0 0 1px var(--color-neutral-600)",
+                            color: "var(--color-warning)",
+                          }}
+                        >
+                          {link.isLiquor ? "✓" : ""}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className="block text-[12.5px]"
+                            style={{
+                              color: link.isLiquor ? "var(--color-warning)" : undefined,
+                            }}
+                          >
+                            Lleva licor
+                          </span>
+                          <span className="block text-[10.5px] text-[var(--color-neutral-500)]">
+                            Va en su propio grupo del POS y la venta queda marcada
+                          </span>
+                        </span>
+                      </button>
                     ) : null}
 
                     <label className={labelSmall}>Insumo que descuenta</label>

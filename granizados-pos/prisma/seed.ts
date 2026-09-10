@@ -1,11 +1,13 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "../src/generated/prisma/client";
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL ?? "",
-});
+const url = process.env.DATABASE_URL ?? "";
+const adapter = url.startsWith("file:")
+  ? new PrismaBetterSqlite3({ url })
+  : new PrismaPg({ connectionString: url });
 const prisma = new PrismaClient({ adapter });
 
 const BRANCH_ID = "sucursal_principal";
@@ -28,6 +30,11 @@ const INVENTORY = [
   { id: "leche", name: "Leche condensada", unit: "latas", quantity: 6, minimum: 2 },
   { id: "crema", name: "Crema", unit: "kg", quantity: 3, minimum: 1 },
   { id: "salsa", name: "Salsa", unit: "l", quantity: 2, minimum: 1 },
+  // Los licores arrancan en cero: se cargan cuando se compre la botella.
+  { id: "l_vodka", name: "Vodka", unit: "ml", quantity: 0, minimum: 500 },
+  { id: "l_ron", name: "Ron", unit: "ml", quantity: 0, minimum: 500 },
+  { id: "l_tequila", name: "Tequila", unit: "ml", quantity: 0, minimum: 500 },
+  { id: "l_aguardiente", name: "Aguardiente", unit: "ml", quantity: 0, minimum: 500 },
 ];
 
 const SIZES = [
@@ -48,12 +55,18 @@ const FLAVORS = [
   { id: "limon", name: "Limón", item: "p_limon", color: "#a8e05f" },
 ];
 
+// Los precios y costos de los licores son de referencia: hay que ajustarlos en
+// Productos y precios con lo que de verdad cuesta la botella y se cobra el trago.
 const ADDONS = [
   { id: "gomitas", name: "Gomitas", price: 1000, cost: 350, item: "gomitas", use: 0.03 },
   { id: "fruta", name: "Fruta", price: 1500, cost: 600, item: "fruta", use: 0.05 },
   { id: "leche", name: "Leche condensada", price: 1500, cost: 500, item: "leche", use: 0.08 },
   { id: "crema", name: "Crema", price: 1000, cost: 300, item: "crema", use: 0.04 },
   { id: "salsa", name: "Salsa", price: 800, cost: 250, item: "salsa", use: 0.02 },
+  { id: "a_vodka", name: "Vodka", price: 6000, cost: 2500, item: "l_vodka", use: 40, liquor: true },
+  { id: "a_ron", name: "Ron", price: 6000, cost: 2500, item: "l_ron", use: 40, liquor: true },
+  { id: "a_tequila", name: "Tequila", price: 7000, cost: 3000, item: "l_tequila", use: 40, liquor: true },
+  { id: "a_aguardiente", name: "Aguardiente", price: 5000, cost: 2000, item: "l_aguardiente", use: 40, liquor: true },
 ];
 
 const EXPENSE_CATEGORIES = ["Materia prima", "Empaques", "Transporte", "Servicios"];
@@ -151,12 +164,13 @@ async function main() {
   for (const addon of ADDONS) {
     await prisma.addon.upsert({
       where: { id: addon.id },
+      // El precio no se reescribe en un re-seed: si el administrador ya lo
+      // ajustó, ese es el bueno.
       update: {
         name: addon.name,
-        price: addon.price,
-        cost: addon.cost,
         inventoryItemId: addon.item,
         useQuantityPerUnit: addon.use,
+        isLiquor: addon.liquor ?? false,
       },
       create: {
         id: addon.id,
@@ -165,6 +179,7 @@ async function main() {
         cost: addon.cost,
         inventoryItemId: addon.item,
         useQuantityPerUnit: addon.use,
+        isLiquor: addon.liquor ?? false,
       },
     });
   }

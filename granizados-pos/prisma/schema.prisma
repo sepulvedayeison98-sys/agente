@@ -115,6 +115,9 @@ model Addon {
   name               String
   price              Int
   cost               Int
+  /// Un trago no es una adición más: va en su propio grupo del POS y la venta
+  /// queda marcada, para poder separar después lo que lleva licor de lo que no.
+  isLiquor           Boolean         @default(false)
   visible            Boolean         @default(true)
   active             Boolean         @default(true)
   inventoryItemId    String?

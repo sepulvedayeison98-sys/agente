@@ -17,7 +17,12 @@ import { formatCOP } from "@/lib/money";
 
 export type CatalogSize = { id: string; name: string; price: number };
 export type CatalogFlavor = { id: string; name: string; color: string | null };
-export type CatalogAddon = { id: string; name: string; price: number };
+export type CatalogAddon = {
+  id: string;
+  name: string;
+  price: number;
+  isLiquor: boolean;
+};
 
 export type Favorite = {
   sizeId: string;
@@ -126,10 +131,17 @@ export function Configurator({
       ? "color-mix(in srgb, var(--color-accent) 24%, var(--color-surface))"
       : "var(--color-surface)";
 
+  // El licor va aparte: cuesta más, se sirve distinto y no se le echa a un
+  // granizado sin querer. El botón "Todas" solo alcanza a las adiciones.
+  const plainAddons = addons.filter((option) => !option.isLiquor);
+  const liquors = addons.filter((option) => option.isLiquor);
+
   // Poner las cinco adiciones era cinco toques. El botón las pone o las quita
   // de una, y cambia de nombre para que se sepa qué va a hacer al tocarlo.
-  const allAddonsOn = addons.length > 0 && addonIds.length === addons.length;
-  const addonsTotal = addons.reduce((total, option) => total + option.price, 0);
+  const allAddonsOn =
+    plainAddons.length > 0 &&
+    plainAddons.every((option) => addonIds.includes(option.id));
+  const addonsTotal = plainAddons.reduce((total, option) => total + option.price, 0);
 
   return (
     // flex-1 para que el resumen, con mt-auto, caiga al pie de la pantalla en
@@ -300,16 +312,23 @@ export function Configurator({
           })}
         </div>
 
-        {addons.length ? (
+        {plainAddons.length ? (
           <div className="mb-[6px] mt-[10px] flex items-center justify-between gap-3">
             <h3 className="text-[12px] font-medium text-[var(--color-neutral-400)]">
               Adiciones
             </h3>
-            {addons.length > 1 ? (
+            {plainAddons.length > 1 ? (
               <button
                 type="button"
                 onClick={() =>
-                  setAddonIds(allAddonsOn ? [] : addons.map((a) => a.id))
+                  setAddonIds((current) => {
+                    const withoutPlain = current.filter((id) =>
+                      liquors.some((option) => option.id === id),
+                    );
+                    return allAddonsOn
+                      ? withoutPlain
+                      : [...withoutPlain, ...plainAddons.map((a) => a.id)];
+                  })
                 }
                 className="pos-tap flex flex-none items-center gap-[5px] rounded-[var(--radius-md)] px-[10px] py-[5px] text-[11.5px]"
                 style={{
@@ -332,7 +351,7 @@ export function Configurator({
         ) : null}
 
         <div className="flex flex-wrap gap-[6px]">
-          {addons.map((option) => {
+          {plainAddons.map((option) => {
             const on = addonIds.includes(option.id);
             return (
               <button
@@ -361,6 +380,56 @@ export function Configurator({
             );
           })}
         </div>
+
+        {liquors.length ? (
+          <>
+            <h3
+              className="mb-[6px] mt-[12px] flex items-center gap-[6px] text-[12px] font-medium"
+              style={{ color: "var(--color-warning)" }}
+            >
+              Con licor
+              <span className="text-[10.5px] font-normal text-[var(--color-neutral-500)]">
+                se cobra aparte
+              </span>
+            </h3>
+            <div className="flex flex-wrap gap-[6px]">
+              {liquors.map((option) => {
+                const on = addonIds.includes(option.id);
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() =>
+                      setAddonIds((current) =>
+                        on
+                          ? current.filter((id) => id !== option.id)
+                          : [...current, option.id],
+                      )
+                    }
+                    className="pos-tap flex items-center gap-[6px] rounded-[var(--radius-md)] px-[11px] py-2 text-[12.5px]"
+                    style={{
+                      // El licor lleva el color de aviso, no el del acento: hay
+                      // que verlo distinto de una gomita antes de servirlo.
+                      boxShadow: on
+                        ? "inset 0 0 0 1px var(--color-warning), 0 0 0 3px color-mix(in srgb, var(--color-warning) 20%, transparent)"
+                        : "inset 0 0 0 1px color-mix(in srgb, var(--color-warning) 40%, transparent)",
+                      background: on
+                        ? "color-mix(in srgb, var(--color-warning) 22%, var(--color-surface))"
+                        : "var(--color-surface)",
+                      color: on ? "#ffffff" : "var(--color-warning)",
+                      fontWeight: on ? 600 : 400,
+                    }}
+                  >
+                    {option.name}
+                    <span className="text-[11px] opacity-70">
+                      +{formatCOP(option.price)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : null}
       </section>
 
       {size && flavor ? (
@@ -371,6 +440,18 @@ export function Configurator({
               {selectedAddons.length
                 ? ` · ${selectedAddons.map((a) => a.name).join(" + ")}`
                 : ""}
+              {selectedAddons.some((a) => a.isLiquor) ? (
+                <span
+                  className="ml-[6px] rounded-[var(--radius-sm)] px-[5px] py-px text-[9.5px] font-medium uppercase tracking-[0.08em]"
+                  style={{
+                    color: "var(--color-warning)",
+                    background:
+                      "color-mix(in srgb, var(--color-warning) 16%, transparent)",
+                  }}
+                >
+                  con licor
+                </span>
+              ) : null}
             </span>
             <span className="font-[family-name:var(--font-heading)] text-[19px]">
               {formatCOP(draftPrice)}

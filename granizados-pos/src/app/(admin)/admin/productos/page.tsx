@@ -60,6 +60,7 @@ export default async function AdminProductosPage() {
     visible: addon.visible,
     inventoryItemId: addon.inventoryItemId,
     useQuantityPerUnit: addon.useQuantityPerUnit,
+    isLiquor: addon.isLiquor,
   }));
 
   return (
@@ -93,6 +94,7 @@ export default async function AdminProductosPage() {
         hasCost
         hasInsumo
         hasConsumo
+        hasLiquor
         rows={addonRows}
         inventory={inventory}
       />

@@ -20,7 +20,7 @@ export default async function PosPage({
     prisma.addon.findMany({
       where: { visible: true, active: true },
       orderBy: { price: "asc" },
-      select: { id: true, name: true, price: true },
+      select: { id: true, name: true, price: true, isLiquor: true },
     }),
     prisma.saleItem.findMany({
       where: { sale: { status: "OK" } },

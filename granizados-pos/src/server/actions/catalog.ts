@@ -27,6 +27,7 @@ export async function createCatalogItem(
     useQuantityPerUnit?: number;
     recipe?: RecipeInput;
     color?: string | null;
+    isLiquor?: boolean;
   },
 ): Promise<ActionResult> {
   await requireAdmin();
@@ -66,6 +67,7 @@ export async function createCatalogItem(
         cost,
         inventoryItemId,
         useQuantityPerUnit: Math.max(0, input.useQuantityPerUnit ?? 0),
+        isLiquor: input.isLiquor ?? false,
       },
     });
   }
@@ -113,6 +115,7 @@ export async function updateCatalogLink(
     useQuantityPerUnit?: number;
     recipe?: RecipeInput;
     color?: string | null;
+    isLiquor?: boolean;
   },
 ): Promise<ActionResult> {
   const session = await requireAdmin();
@@ -137,6 +140,7 @@ export async function updateCatalogLink(
       data: {
         inventoryItemId,
         useQuantityPerUnit: Math.max(0, input.useQuantityPerUnit ?? 0),
+        ...(input.isLiquor === undefined ? {} : { isLiquor: input.isLiquor }),
       },
     });
   } else {
