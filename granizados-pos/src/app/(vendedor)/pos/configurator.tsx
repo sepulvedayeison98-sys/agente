@@ -136,47 +136,70 @@ export function Configurator({
     // vez de quedarse donde termine el contenido.
     <div className="flex flex-1 flex-col gap-[14px]">
       {promoDetail ? (
+        // La promo es la venta que el negocio quiere empujar, así que no pesa
+        // como una fila más: ocupa su propio bloque, con el ahorro dicho en
+        // pesos y el botón de agregar con nombre en vez de un "+" suelto.
         <div
-          className="flex items-center gap-3 rounded-[var(--radius-md)] px-3 py-[11px]"
+          className="rounded-[var(--radius-lg)] px-[13px] pb-[12px] pt-[11px]"
           style={{
             background:
-              "linear-gradient(100deg, color-mix(in srgb, var(--color-brand-green) 16%, transparent), color-mix(in srgb, var(--color-accent) 20%, transparent) 62%, color-mix(in srgb, var(--color-brand-cyan) 16%, transparent))",
-            boxShadow: "inset 0 0 0 1px var(--color-accent-700)",
+              "linear-gradient(100deg, color-mix(in srgb, var(--color-brand-green) 18%, transparent), color-mix(in srgb, var(--color-accent) 24%, transparent) 62%, color-mix(in srgb, var(--color-brand-cyan) 18%, transparent))",
+            boxShadow:
+              "inset 0 0 0 1px var(--color-accent-600), 0 6px 20px color-mix(in srgb, var(--color-accent) 18%, transparent)",
           }}
         >
-          {/* El emblema de la marca en vez de una estrella genérica: la promo
-              del día es de la casa y se ve de quién es. */}
-          <Image
-            src="/logo-oasis-sm.png"
-            alt=""
-            width={132}
-            height={98}
-            className="h-[30px] w-auto flex-none"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--color-brand-cyan)]">
-              Promo del día
-            </div>
-            <div className="font-[family-name:var(--font-heading)] text-[15px] font-medium">
-              {promo!.name}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-[family-name:var(--font-heading)] text-[16px]">
-              {formatCOP(Math.max(0, promoDetail.price - promo!.discount))}
-            </div>
-            <div className="text-[10px] text-[var(--color-neutral-400)] line-through">
-              {formatCOP(promoDetail.price)}
+          <div className="flex items-center gap-[10px]">
+            {/* El emblema de la marca: la promo del día es de la casa. */}
+            <Image
+              src="/logo-oasis-sm.png"
+              alt=""
+              width={132}
+              height={98}
+              className="h-[38px] w-auto flex-none"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--color-brand-cyan)]">
+                Promo del día
+              </div>
+              <div className="font-[family-name:var(--font-heading)] text-[18px] font-medium leading-tight">
+                {promo!.name}
+              </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => add(promo!)}
-            aria-label="Agregar promo al carrito"
-            className="pos-tap grid size-[38px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-accent)] text-[var(--color-accent)]"
-          >
-            <Plus size={17} />
-          </button>
+
+          <div className="mt-[11px] flex items-end gap-[10px]">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-[7px]">
+                <span className="font-[family-name:var(--font-heading)] text-[26px] font-medium leading-none tabular-nums">
+                  {formatCOP(Math.max(0, promoDetail.price - promo!.discount))}
+                </span>
+                <span className="text-[12px] text-[var(--color-neutral-400)] line-through">
+                  {formatCOP(promoDetail.price)}
+                </span>
+              </div>
+              <div
+                className="mt-[3px] text-[11px] font-medium"
+                style={{ color: "var(--color-brand-green)" }}
+              >
+                Ahorra {formatCOP(promo!.discount)}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => add(promo!)}
+              className="pos-tap flex h-[42px] flex-none items-center gap-[6px] rounded-[var(--radius-md)] px-[15px] font-[family-name:var(--font-heading)] text-[13.5px] font-medium"
+              style={{
+                background: "var(--color-accent)",
+                color: "#ffffff",
+                boxShadow:
+                  "0 2px 10px color-mix(in srgb, var(--color-accent) 45%, transparent)",
+              }}
+            >
+              <Plus size={16} weight="bold" />
+              Agregar
+            </button>
+          </div>
         </div>
       ) : null}
 
