@@ -82,31 +82,73 @@ const USERS = [
   { id: "u_juan", name: "Juan Ospina", username: "juan", pin: process.env.SEED_PIN_JUAN ?? "1234", fromEnv: !!process.env.SEED_PIN_JUAN, role: "VENDEDOR" as const },
 ];
 
+/**
+ * El seed solo siembra una base vacía.
+ *
+ * Antes reescribía en cada despliegue lo que ya estaba guardado: los precios de
+ * los tamaños volvían a 4.000/6.000/8.000/12.000, las recetas se borraban y se
+ * recreaban, los nombres y colores de los sabores volvían a los de aquí y los
+ * PINs a los del entorno. Como `vercel-build` corre este archivo, cada cambio
+ * de código le borraba al administrador lo que había configurado en el panel.
+ *
+ * Ahora, si ya hay alguien registrado, este archivo no escribe nada. El
+ * catálogo se administra desde la app —insumos, sabores, adiciones, precios y
+ * recetas—, y los datos nuevos para una base que ya trabaja van en una
+ * migración, no aquí.
+ */
 async function main() {
+  if ((await prisma.user.count()) > 0) {
+    await resetPins();
+    console.log("La base ya está configurada: el seed no tocó nada.");
+    return;
+  }
+
+  await sembrarBaseVacia();
+  console.log("Seed completado.");
+}
+
+/**
+ * La salida cuando nadie recuerda el PIN del administrador: definir
+ * SEED_RESET_PINS=1 en el entorno y volver a desplegar. Sin esa variable un
+ * despliegue no toca ningún PIN, ni siquiera con las SEED_PIN_* puestas.
+ */
+async function resetPins() {
+  if (process.env.SEED_RESET_PINS !== "1") return;
+
+  for (const user of USERS) {
+    if (!user.fromEnv) continue;
+    const { count } = await prisma.user.updateMany({
+      where: { id: user.id },
+      data: {
+        pinHash: await bcrypt.hash(user.pin, 10),
+        // Adelantar credentialsAt cierra las sesiones abiertas con el PIN viejo.
+        credentialsAt: new Date(),
+      },
+    });
+    if (count > 0) console.log(`PIN restablecido: ${user.username}`);
+  }
+}
+
+/**
+ * Los `upsert` con `update: {}` no son un descuido: si un seed anterior murió a
+ * la mitad, este vuelve a correr sin chocar y sin pisar lo que ya quedó.
+ */
+async function sembrarBaseVacia() {
   await prisma.branch.upsert({
     where: { id: BRANCH_ID },
-    update: { name: "Sucursal principal", isDefault: true },
+    update: {},
     create: { id: BRANCH_ID, name: "Sucursal principal", isDefault: true },
   });
 
   for (const user of USERS) {
-    const pinHash = await bcrypt.hash(user.pin, 10);
     await prisma.user.upsert({
       where: { id: user.id },
-      // El PIN solo se reescribe cuando llega explícito por entorno: así un
-      // re-seed no le borra el PIN a un usuario que ya venía trabajando.
-      update: {
-        name: user.name,
-        username: user.username,
-        role: user.role,
-        branchId: BRANCH_ID,
-        ...(user.fromEnv ? { pinHash } : {}),
-      },
+      update: {},
       create: {
         id: user.id,
         name: user.name,
         username: user.username,
-        pinHash,
+        pinHash: await bcrypt.hash(user.pin, 10),
         role: user.role,
         branchId: BRANCH_ID,
       },
@@ -116,25 +158,26 @@ async function main() {
   for (const item of INVENTORY) {
     await prisma.inventoryItem.upsert({
       where: { id: item.id },
-      update: { name: item.name, unit: item.unit, minimum: item.minimum },
+      update: {},
       create: item,
     });
   }
 
   await prisma.product.upsert({
     where: { id: PRODUCT_ID },
-    update: { name: "Granizado", type: "granizado" },
+    update: {},
     create: { id: PRODUCT_ID, name: "Granizado", type: "granizado" },
   });
 
   for (const size of SIZES) {
-    await prisma.size.upsert({
-      where: { id: size.id },
-      update: { name: size.name, price: size.price },
-      create: { id: size.id, name: size.name, price: size.price, productId: PRODUCT_ID },
-    });
+    const existe = await prisma.size.findUnique({ where: { id: size.id } });
+    if (existe) continue;
 
-    await prisma.recipeLine.deleteMany({ where: { sizeId: size.id } });
+    await prisma.size.create({
+      data: { id: size.id, name: size.name, price: size.price, productId: PRODUCT_ID },
+    });
+    // La receta se escribe junto con el tamaño y nunca después: es editable
+    // desde Productos y precios, y borrarla en cada despliegue perdía el ajuste.
     await prisma.recipeLine.createMany({
       data: [
         { sizeId: size.id, inventoryItemId: size.cup, quantityPerUnit: 1 },
@@ -147,11 +190,7 @@ async function main() {
   for (const flavor of FLAVORS) {
     await prisma.flavor.upsert({
       where: { id: flavor.id },
-      update: {
-        name: flavor.name,
-        inventoryItemId: flavor.item,
-        color: flavor.color,
-      },
+      update: {},
       create: {
         id: flavor.id,
         name: flavor.name,
@@ -164,14 +203,7 @@ async function main() {
   for (const addon of ADDONS) {
     await prisma.addon.upsert({
       where: { id: addon.id },
-      // El precio no se reescribe en un re-seed: si el administrador ya lo
-      // ajustó, ese es el bueno.
-      update: {
-        name: addon.name,
-        inventoryItemId: addon.item,
-        useQuantityPerUnit: addon.use,
-        isLiquor: addon.liquor ?? false,
-      },
+      update: {},
       create: {
         id: addon.id,
         name: addon.name,
@@ -192,20 +224,15 @@ async function main() {
     });
   }
 
-  const existingPromo = await prisma.promo.findFirst();
-  if (!existingPromo) {
-    await prisma.promo.create({
-      data: {
-        name: "Piña mediano + fruta",
-        sizeId: "m",
-        flavorId: "pina",
-        discount: 1500,
-        addons: { create: [{ addonId: "fruta" }] },
-      },
-    });
-  }
-
-  console.log("Seed completado.");
+  await prisma.promo.create({
+    data: {
+      name: "Piña mediano + fruta",
+      sizeId: "m",
+      flavorId: "pina",
+      discount: 1500,
+      addons: { create: [{ addonId: "fruta" }] },
+    },
+  });
 }
 
 main()

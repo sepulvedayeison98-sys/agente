@@ -67,4 +67,5 @@ next-env.d.ts
 /tests/.generated
 /tests/.schema-sqlite.prisma
 /tests/.schema.sql
+/tests/.seed-copia.ts
 /tests/test.db
