@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { resetDatabase } from "./reset";
-import { registerSale } from "@/server/sales";
+import { MAX_QUANTITY_PER_LINE, registerSale } from "@/server/sales";
 import type { SessionPayload } from "@/lib/session-token";
 
 const SESSION: SessionPayload = {
@@ -152,6 +152,48 @@ describe("registerSale", () => {
 
     expect(result.ok).toBe(false);
     expect(await prisma.sale.count()).toBe(0);
+  });
+
+  it("rechaza cantidades por encima del tope", async () => {
+    const result = await registerSale(
+      SESSION,
+      request({
+        lines: [
+          {
+            sizeId: "g",
+            flavorId: "mango",
+            addonIds: [],
+            quantity: MAX_QUANTITY_PER_LINE + 1,
+          },
+        ],
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("Divide la venta");
+    // Sin techo, un dedo pegado dejaba el inventario en un negativo enorme.
+    expect(await prisma.sale.count()).toBe(0);
+  });
+
+  it("el tope no estorba una venta grande de verdad", async () => {
+    const result = await registerSale(
+      SESSION,
+      request({
+        method: "TARJETA",
+        received: null,
+        lines: [
+          {
+            sizeId: "g",
+            flavorId: "mango",
+            addonIds: [],
+            quantity: MAX_QUANTITY_PER_LINE,
+          },
+        ],
+      }),
+    );
+
+    expect(result.ok).toBe(true);
   });
 
   it("numera las ventas de forma consecutiva", async () => {

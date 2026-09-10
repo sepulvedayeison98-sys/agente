@@ -4,6 +4,11 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createSession, deleteSession } from "@/lib/session";
+import {
+  checkLoginThrottle,
+  recordLoginAttempt,
+  waitLabel,
+} from "@/server/login-throttle";
 
 export type LoginState = { error?: string };
 
@@ -19,11 +24,26 @@ export async function login(
     return { error: "Escribe tu usuario y tu PIN." };
   }
 
+  // Antes de mirar el PIN: si esta cuenta viene fallando, se hace esperar.
+  const throttle = await checkLoginThrottle(username);
+  if (throttle.blocked) {
+    return {
+      error: `Demasiados intentos fallidos. Espera ${waitLabel(
+        throttle.retryInSeconds,
+      )} antes de volver a intentar.`,
+    };
+  }
+
   const user = await prisma.user.findUnique({ where: { username } });
+  const ok = Boolean(
+    user && user.active && (await bcrypt.compare(pin, user.pinHash)),
+  );
+
+  await recordLoginAttempt(username, ok);
 
   // Mismo mensaje para usuario inexistente y PIN incorrecto: no revela cuáles
   // usuarios existen.
-  if (!user || !user.active || !(await bcrypt.compare(pin, user.pinHash))) {
+  if (!ok || !user) {
     return { error: "Usuario o PIN incorrecto." };
   }
 

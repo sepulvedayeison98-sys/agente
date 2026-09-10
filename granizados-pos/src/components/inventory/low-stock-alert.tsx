@@ -13,11 +13,14 @@ export function LowStockAlert({ items }: { items: LowStockItem[] }) {
     <div
       className="flex items-start gap-[9px] rounded-[var(--radius-md)] px-3 py-[10px]"
       style={{
-        background: "var(--color-accent-900)",
-        boxShadow: "inset 0 0 0 1px var(--color-accent-700)",
+        // Avisar es trabajo del color de peligro, no del acento: el acento
+        // marca lo que el usuario eligió y no puede significar las dos cosas.
+        background: "color-mix(in srgb, var(--color-danger) 12%, transparent)",
+        boxShadow:
+          "inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 45%, transparent)",
       }}
     >
-      <Warning size={16} weight="fill" className="mt-px text-[var(--color-accent-300)]" />
+      <Warning size={16} weight="fill" className="mt-px text-[var(--color-danger)]" />
       <div className="text-[12px]">
         Inventario bajo
         <div className="text-[11.5px] text-[var(--color-neutral-400)]">

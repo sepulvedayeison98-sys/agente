@@ -32,7 +32,11 @@ export function AppShell({
         {headerAction}
       </header>
 
-      <main className="flex-1 overflow-auto px-4 pb-3">{children}</main>
+      {/* Columna flex para que una pantalla pueda anclar su acción principal al
+          pie con mt-auto en vez de dejarla donde termine el contenido. */}
+      <main className="flex flex-1 flex-col overflow-auto px-4 pb-3">
+        {children}
+      </main>
 
       {footer ? <div className="mx-4 mb-2">{footer}</div> : null}
 

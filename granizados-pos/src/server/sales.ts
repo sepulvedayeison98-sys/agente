@@ -27,6 +27,14 @@ export type SaleResult =
 const MAX_NUMBER_RETRIES = 5;
 
 /**
+ * Tope por línea. No es una regla de negocio sino un cortafuegos: cincuenta
+ * vasos es más de lo que cabe en un mostrador, y sin techo un dedo pegado en
+ * el teclado deja el inventario en un negativo enorme y contamina la utilidad
+ * y el ticket promedio de todo el día.
+ */
+export const MAX_QUANTITY_PER_LINE = 50;
+
+/**
  * Registra una venta. Nunca confía en los precios que manda el cliente: vuelve a
  * leerlos de la base y los congela en la venta, de modo que un cambio de precio
  * posterior no altera las ventas históricas.
@@ -43,6 +51,12 @@ export async function registerSale(
   }
   if (request.lines.some((line) => !Number.isInteger(line.quantity) || line.quantity < 1)) {
     return { ok: false, error: "Hay una cantidad inválida en el carrito." };
+  }
+  if (request.lines.some((line) => line.quantity > MAX_QUANTITY_PER_LINE)) {
+    return {
+      ok: false,
+      error: `No se pueden vender más de ${MAX_QUANTITY_PER_LINE} unidades de una misma combinación. Divide la venta.`,
+    };
   }
 
   // Doble toque: si la clave ya existe, devuelve la venta que ya se registró.

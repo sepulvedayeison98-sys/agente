@@ -68,47 +68,95 @@ export default async function AdminDashboardPage({
     ? items.filter((item) => item.quantity <= item.minimum)
     : [];
 
-  const kpis = [
+  // Ventas y utilidad son por lo que se abre esta pantalla; los otros cuatro
+  // son contexto y antes pesaban exactamente lo mismo.
+  const headline = [
     { label: "Ventas", value: formatCOP(revenue), note: `${sales.length} ventas` },
+    {
+      label: "Utilidad estimada",
+      value: formatCOP(profit),
+      note: "ventas − costo − gastos",
+      tone: profit < 0 ? "var(--color-danger)" : undefined,
+    },
+  ];
+  const kpis = [
     { label: "Ticket promedio", value: formatCOP(averageTicket), note: "por venta" },
     { label: "Productos vendidos", value: String(units), note: "granizados" },
     { label: "Adiciones", value: String(addonCount), note: formatCOP(addonCost) + " en costo" },
     { label: "Gastos", value: formatCOP(expenseTotal), note: `${expenses.length} registros` },
-    { label: "Utilidad estimada", value: formatCOP(profit), note: "ventas − costo − gastos" },
   ];
+
+  const periodLabel =
+    PERIODS.find((option) => option.id === period)?.label.toLowerCase() ??
+    "este período";
 
   return (
     <div>
       <PeriodChips periods={PERIODS} active={period} />
 
+      {sales.length === 0 ? (
+        <p className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-[14px] text-center text-[12.5px] leading-relaxed text-[var(--color-neutral-400)] shadow-[var(--shadow-sm)]">
+          Todavía no hay ventas {periodLabel}.
+          <br />
+          Los números aparecen aquí en cuanto se registre la primera.
+        </p>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-[7px]">
-        {kpis.map((kpi) => (
+        {headline.map((kpi) => (
           <div
             key={kpi.label}
-            className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-[11px] shadow-[var(--shadow-sm)]"
+            className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-[13px] shadow-[var(--shadow-md)]"
           >
             <div className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-neutral-400)]">
               {kpi.label}
             </div>
-            <div className="mt-[3px] font-[family-name:var(--font-heading)] text-[19px]">
+            <div
+              className="mt-[3px] font-[family-name:var(--font-heading)] text-[26px] font-medium leading-none tabular-nums"
+              style={kpi.tone ? { color: kpi.tone } : undefined}
+            >
               {kpi.value}
             </div>
-            <div className="text-[10.5px] text-[var(--color-accent-300)]">
+            <div className="mt-[4px] text-[10.5px] text-[var(--color-neutral-400)]">
               {kpi.note}
             </div>
           </div>
         ))}
       </div>
 
-      <h2 className="mb-2 mt-4 text-[12px] font-medium text-[var(--color-neutral-400)]">
-        Ventas por hora
-      </h2>
-      <HourBars
-        bars={hours.map((hour) => ({
-          label: String(hour).padStart(2, "0"),
-          value: byHour.get(hour) ?? 0,
-        }))}
-      />
+      <div className="mt-[7px] grid grid-cols-2 gap-[7px]">
+        {kpis.map((kpi) => (
+          <div
+            key={kpi.label}
+            className="rounded-[var(--radius-md)] px-3 py-[9px]"
+            style={{ boxShadow: "inset 0 0 0 1px var(--color-divider)" }}
+          >
+            <div className="text-[10px] uppercase tracking-[0.07em] text-[var(--color-neutral-500)]">
+              {kpi.label}
+            </div>
+            <div className="mt-[2px] font-[family-name:var(--font-heading)] text-[16px] tabular-nums">
+              {kpi.value}
+            </div>
+            <div className="text-[10.5px] text-[var(--color-neutral-600)]">
+              {kpi.note}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {sales.length ? (
+        <>
+          <h2 className="mb-2 mt-4 text-[12px] font-medium text-[var(--color-neutral-400)]">
+            Ventas por hora
+          </h2>
+          <HourBars
+            bars={hours.map((hour) => ({
+              label: String(hour).padStart(2, "0"),
+              value: byHour.get(hour) ?? 0,
+            }))}
+          />
+        </>
+      ) : null}
 
       <div className="mt-3">
         <LowStockAlert

@@ -112,14 +112,23 @@ export function Configurator({
   const count = cartCount(lines);
   const total = cartTotal(lines);
 
+  // Lo seleccionado llevaba solo un borde tenue del color del acento: con sol
+  // en el mostrador y el brillo bajo, no se distinguía de lo no seleccionado.
+  // Relleno, borde y halo dicen lo mismo tres veces.
   const ring = (on: boolean) =>
     on
-      ? "inset 0 0 0 1px var(--color-accent)"
+      ? "inset 0 0 0 1px var(--color-accent), 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent)"
       : "inset 0 0 0 1px var(--color-divider)";
-  const fg = (on: boolean) => (on ? "var(--color-accent)" : "var(--color-text)");
+  const fg = (on: boolean) => (on ? "#ffffff" : "var(--color-text)");
+  const bg = (on: boolean) =>
+    on
+      ? "color-mix(in srgb, var(--color-accent) 24%, var(--color-surface))"
+      : "var(--color-surface)";
 
   return (
-    <div className="flex flex-col gap-[14px]">
+    // flex-1 para que el resumen, con mt-auto, caiga al pie de la pantalla en
+    // vez de quedarse donde termine el contenido.
+    <div className="flex flex-1 flex-col gap-[14px]">
       {promoDetail ? (
         <div
           className="flex items-center gap-3 rounded-[var(--radius-md)] px-3 py-[11px]"
@@ -205,13 +214,16 @@ export function Configurator({
                 key={option.id}
                 type="button"
                 onClick={() => setSizeId(option.id)}
-                className="pos-tap rounded-[var(--radius-md)] bg-[var(--color-surface)] px-1 py-[9px] text-center"
-                style={{ boxShadow: ring(on) }}
+                className="pos-tap rounded-[var(--radius-md)] px-1 py-[9px] text-center"
+                style={{ boxShadow: ring(on), background: bg(on) }}
               >
                 <div className="text-[11.5px]" style={{ color: fg(on) }}>
                   {option.name}
                 </div>
-                <div className="mt-[2px] font-[family-name:var(--font-heading)] text-[13.5px]">
+                <div
+                  className="mt-[2px] font-[family-name:var(--font-heading)] text-[13.5px]"
+                  style={{ fontWeight: on ? 600 : 400 }}
+                >
                   {formatCOP(option.price)}
                 </div>
               </button>
@@ -227,8 +239,13 @@ export function Configurator({
                 key={option.id}
                 type="button"
                 onClick={() => setFlavorId(option.id)}
-                className="pos-tap grid h-[50px] place-items-center rounded-[var(--radius-md)] bg-[var(--color-surface)] text-[13px]"
-                style={{ boxShadow: ring(on), color: fg(on) }}
+                className="pos-tap grid h-[50px] place-items-center rounded-[var(--radius-md)] text-[13px]"
+                style={{
+                  boxShadow: ring(on),
+                  color: fg(on),
+                  background: bg(on),
+                  fontWeight: on ? 600 : 400,
+                }}
               >
                 {option.name}
               </button>
@@ -250,8 +267,13 @@ export function Configurator({
                       : [...current, option.id],
                   )
                 }
-                className="pos-tap flex items-center gap-[6px] rounded-[var(--radius-md)] bg-[var(--color-surface)] px-[11px] py-2 text-[12.5px]"
-                style={{ boxShadow: ring(on), color: fg(on) }}
+                className="pos-tap flex items-center gap-[6px] rounded-[var(--radius-md)] px-[11px] py-2 text-[12.5px]"
+                style={{
+                  boxShadow: ring(on),
+                  color: fg(on),
+                  background: bg(on),
+                  fontWeight: on ? 600 : 400,
+                }}
               >
                 {option.name}
                 <span className="text-[11px] text-[var(--color-neutral-400)]">
@@ -264,7 +286,7 @@ export function Configurator({
       </section>
 
       {size && flavor ? (
-        <div className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-3 py-[11px] shadow-[var(--shadow-sm)]">
+        <div className="sticky bottom-0 -mx-4 mt-auto rounded-t-[var(--radius-lg)] border-t border-[var(--color-divider)] bg-[var(--color-surface)] px-4 pb-[11px] pt-[11px] shadow-[var(--shadow-lg)]">
           <div className="flex items-baseline justify-between gap-[10px]">
             <span className="text-[13px]">
               Granizado {size.name.toLowerCase()} · {flavor.name}

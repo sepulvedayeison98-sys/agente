@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   ClockCounterClockwise,
+  DotsThree,
   PencilSimple,
   Plus,
   Scales,
@@ -58,6 +59,7 @@ const labelClass = "text-[11px] text-[var(--color-neutral-400)]";
 export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
   const [creating, setCreating] = useState(false);
   const [openMovement, setOpenMovement] = useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -238,83 +240,158 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
 
       {rows.map((row) => {
         const isLow = row.quantity <= row.minimum;
+        // La barra se dibuja contra el triple del mínimo, que es el "lleno"
+        // razonable de un insumo. Si hay más existencia que eso, manda la
+        // existencia y la marca del mínimo se corre a la izquierda sola.
+        const ceiling = Math.max(row.quantity, row.minimum * 3, 1);
+        const level = Math.max(0, Math.min(1, row.quantity / ceiling));
+        const levelColor = isLow
+          ? "var(--color-danger)"
+          : row.quantity <= row.minimum * 1.5
+            ? "var(--color-warning)"
+            : "var(--color-success)";
+
+        function closeAll() {
+          setOpenMenu(null);
+          setOpenHistory(null);
+          setOpenMovement(null);
+          setEditing(null);
+          setConfirmDelete(null);
+          setError(null);
+        }
+
         return (
           <div
             key={row.id}
-            className="rounded-[var(--radius-md)] bg-[var(--color-surface)] px-[11px] py-[9px] shadow-[var(--shadow-sm)]"
+            className="rounded-[var(--radius-md)] px-[11px] py-[9px]"
+            style={{
+              background: isLow
+                ? "color-mix(in srgb, var(--color-danger) 8%, var(--color-surface))"
+                : "var(--color-surface)",
+              boxShadow: isLow
+                ? "0 0 0 1px var(--color-danger)"
+                : "var(--shadow-sm)",
+            }}
           >
             <div className="flex items-center gap-[9px]">
               <div className="min-w-0 flex-1">
-                <div className="text-[13px]">
+                <div className="flex flex-wrap items-center gap-x-[6px] text-[13px]">
                   {row.name}
                   {isLow ? (
-                    <span className="text-[11px] text-[var(--color-accent-300)]">
-                      {"  "}⚠ bajo
+                    <span
+                      className="rounded-[var(--radius-sm)] px-[5px] py-px text-[9.5px] font-medium uppercase tracking-[0.08em]"
+                      style={{
+                        color: "var(--color-danger)",
+                        background:
+                          "color-mix(in srgb, var(--color-danger) 16%, transparent)",
+                      }}
+                    >
+                      bajo
                     </span>
                   ) : null}
                 </div>
                 <div className="text-[11px] text-[var(--color-neutral-400)]">
-                  {formatQuantity(row.quantity)} {row.unit} · mínimo{" "}
+                  quedan {formatQuantity(row.quantity)} {row.unit} · mínimo{" "}
                   {formatQuantity(row.minimum)}
                 </div>
               </div>
 
               <button
                 type="button"
-                aria-label={`Movimientos de ${row.name}`}
-                onClick={() => {
-                  setOpenHistory(openHistory === row.id ? null : row.id);
-                  setOpenMovement(null);
-                  setEditing(null);
-                }}
-                className="pos-tap grid size-[32px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-divider)] text-[var(--color-neutral-400)]"
-              >
-                <ClockCounterClockwise size={15} />
-              </button>
-              <button
-                type="button"
-                aria-label={`Editar ${row.name}`}
-                onClick={() => {
-                  setEditing(editing === row.id ? null : row.id);
-                  setOpenMovement(null);
-                  setOpenHistory(null);
-                  setError(null);
-                  setEdit({ name: row.name, unit: row.unit, minimum: String(row.minimum) });
-                }}
-                className="pos-tap grid size-[32px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-divider)]"
-              >
-                <PencilSimple size={15} />
-              </button>
-              <button
-                type="button"
-                aria-label={`Eliminar ${row.name}`}
-                onClick={() => {
-                  setConfirmDelete(confirmDelete === row.id ? null : row.id);
-                  setOpenMovement(null);
-                  setOpenHistory(null);
-                  setEditing(null);
-                  setError(null);
-                }}
-                className="pos-tap grid size-[32px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-divider)] text-[var(--color-neutral-400)]"
-              >
-                <Trash size={15} />
-              </button>
-
-              <button
-                type="button"
                 aria-label={`Mover existencias de ${row.name}`}
                 onClick={() => {
-                  setOpenMovement(openMovement === row.id ? null : row.id);
-                  setOpenHistory(null);
-                  setEditing(null);
-                  setError(null);
-                  setMove({ kind: "ENTRADA", amount: "", reason: "" });
+                  const open = openMovement === row.id;
+                  closeAll();
+                  if (!open) {
+                    setOpenMovement(row.id);
+                    setMove({ kind: "ENTRADA", amount: "", reason: "" });
+                  }
                 }}
                 className="pos-tap flex-none rounded-[var(--radius-md)] border border-[var(--color-accent)] px-[10px] py-[6px] text-[11.5px] text-[var(--color-accent)]"
               >
                 Mover
               </button>
+
+              {/* Historial, editar y eliminar viven aquí dentro: eran cuatro
+                  botones por fila, y la papelera pesaba lo mismo que el resto. */}
+              <button
+                type="button"
+                aria-label={`Más opciones de ${row.name}`}
+                aria-expanded={openMenu === row.id}
+                onClick={() => {
+                  const open = openMenu === row.id;
+                  closeAll();
+                  if (!open) setOpenMenu(row.id);
+                }}
+                className="pos-tap grid size-[32px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-divider)] text-[var(--color-neutral-400)]"
+              >
+                <DotsThree size={18} weight="bold" />
+              </button>
             </div>
+
+            <div className="mt-[8px]">
+              <div className="h-[5px] overflow-hidden rounded-full bg-[var(--color-neutral-800)]">
+                <div
+                  className="h-full rounded-full transition-[width] duration-500"
+                  style={{ width: `${level * 100}%`, background: levelColor }}
+                />
+              </div>
+              <div className="mt-[3px] flex justify-between text-[9.5px] tabular-nums text-[var(--color-neutral-600)]">
+                <span>0</span>
+                <span>
+                  mínimo {formatQuantity(row.minimum)} {row.unit}
+                </span>
+                <span>{formatQuantity(ceiling)}</span>
+              </div>
+            </div>
+
+            {openMenu === row.id ? (
+              <div className="animate-rise-in mt-[9px] flex gap-[6px] border-t border-[var(--color-divider)] pt-[9px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    setOpenHistory(row.id);
+                  }}
+                  className="pos-tap flex flex-1 items-center justify-center gap-[5px] rounded-[var(--radius-md)] border border-[var(--color-divider)] py-[7px] text-[11.5px] text-[var(--color-neutral-400)]"
+                >
+                  <ClockCounterClockwise size={14} />
+                  Movimientos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    setEditing(row.id);
+                    setEdit({
+                      name: row.name,
+                      unit: row.unit,
+                      minimum: String(row.minimum),
+                    });
+                  }}
+                  className="pos-tap flex flex-1 items-center justify-center gap-[5px] rounded-[var(--radius-md)] border border-[var(--color-divider)] py-[7px] text-[11.5px]"
+                >
+                  <PencilSimple size={14} />
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    setConfirmDelete(row.id);
+                  }}
+                  className="pos-tap flex flex-1 items-center justify-center gap-[5px] rounded-[var(--radius-md)] py-[7px] text-[11.5px]"
+                  style={{
+                    color: "var(--color-danger)",
+                    boxShadow:
+                      "inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 45%, transparent)",
+                  }}
+                >
+                  <Trash size={14} />
+                  Eliminar
+                </button>
+              </div>
+            ) : null}
 
             {confirmDelete === row.id ? (
               <div className="animate-rise-in mt-[9px] border-t border-[var(--color-divider)] pt-[9px]">

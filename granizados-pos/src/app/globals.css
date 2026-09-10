@@ -33,6 +33,14 @@
   --color-neutral-800: #3f424d;
   --color-neutral-900: #292b31;
 
+  /* Colores con significado. Deliberadamente separados del acento: hasta ahora
+     el morado marcaba lo seleccionado Y avisaba de lo urgente, así que el ojo
+     no podía distinguir "esto elegiste" de "esto está mal". Elegidos claros y
+     algo desaturados para sostener el contraste sobre #161826 sin vibrar. */
+  --color-success: #5ed6a0;
+  --color-warning: #f0b757;
+  --color-danger: #ff7b6e;
+
   --font-heading: var(--font-inter), "Inter", system-ui, sans-serif;
   --font-body: var(--font-inter), "Inter", system-ui, sans-serif;
 
@@ -60,6 +68,10 @@
   --color-surface: var(--color-surface);
   --color-text: var(--color-text);
   --color-divider: var(--color-divider);
+
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
 
   --color-accent: var(--color-accent);
   --color-accent-100: var(--color-accent-100);

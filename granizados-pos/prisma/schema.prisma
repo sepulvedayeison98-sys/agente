@@ -60,6 +60,18 @@ model User {
   createdAt          DateTime             @default(now())
 }
 
+/// Un intento de entrada por usuario. Sirve para frenar la fuerza bruta: el
+/// PIN es de cuatro dígitos y los usuarios son pocos y adivinables, así que sin
+/// esto probar las diez mil combinaciones no cuesta nada.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  username  String
+  ok        Boolean
+  createdAt DateTime @default(now())
+
+  @@index([username, createdAt])
+}
+
 model Product {
   id     String  @id @default(cuid())
   type   String // "granizado"; extensible a helado, malteada, combo...
