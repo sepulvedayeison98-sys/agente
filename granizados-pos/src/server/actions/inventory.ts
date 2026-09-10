@@ -5,8 +5,10 @@ import { requireAdmin } from "@/lib/dal";
 import {
   createInventoryItem,
   moveInventory,
+  removeInventoryItem,
   updateInventoryItem,
   type ActionResult,
+  type DeleteOutcome,
   type MovementKind,
 } from "@/server/inventory-admin";
 
@@ -47,6 +49,13 @@ export async function editInventoryItem(input: {
 }): Promise<ActionResult> {
   const session = await requireAdmin();
   const result = await updateInventoryItem(session, input);
+  if (result.ok) revalidateInventory();
+  return result;
+}
+
+export async function deleteInventoryItem(itemId: string): Promise<DeleteOutcome> {
+  const session = await requireAdmin();
+  const result = await removeInventoryItem(session, itemId);
   if (result.ok) revalidateInventory();
   return result;
 }

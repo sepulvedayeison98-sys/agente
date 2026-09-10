@@ -4,6 +4,7 @@ import { resetDatabase } from "./reset";
 import {
   createInventoryItem,
   moveInventory,
+  removeInventoryItem,
   updateInventoryItem,
 } from "@/server/inventory-admin";
 import type { SessionPayload } from "@/lib/session-token";
@@ -252,5 +253,79 @@ describe("editar insumo", () => {
     });
 
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("eliminar insumo", () => {
+  it("borra de verdad uno que nunca se usó", async () => {
+    const item = await makeItem(0); // sin existencia inicial no hay movimientos
+
+    const result = await removeInventoryItem(ADMIN, item.id);
+
+    expect(result).toEqual({ ok: true, archived: false });
+    expect(await prisma.inventoryItem.count({ where: { id: item.id } })).toBe(0);
+  });
+
+  it("archiva en vez de borrar cuando ya tuvo movimientos", async () => {
+    const item = await makeItem(10);
+
+    const result = await removeInventoryItem(ADMIN, item.id);
+
+    expect(result).toEqual({ ok: true, archived: true });
+    const stored = await prisma.inventoryItem.findUnique({ where: { id: item.id } });
+    expect(stored?.active).toBe(false);
+    // El historial sobrevive: es lo que explica las ventas pasadas.
+    expect(await prisma.inventoryMovement.count({ where: { itemId: item.id } })).toBe(1);
+  });
+
+  it("se niega si el insumo está conectado a un sabor", async () => {
+    const item = await makeItem(0);
+    await prisma.flavor.create({
+      data: { name: "Coco", inventoryItemId: item.id },
+    });
+
+    const result = await removeInventoryItem(ADMIN, item.id);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("Productos y precios");
+    expect(await prisma.inventoryItem.count({ where: { id: item.id } })).toBe(1);
+  });
+
+  it("se niega si está en la receta de un tamaño", async () => {
+    const item = await makeItem(0);
+    await prisma.product.create({
+      data: { id: "granizado", name: "Granizado", type: "granizado" },
+    });
+    const size = await prisma.size.create({
+      data: { name: "Grande", price: 8000, productId: "granizado" },
+    });
+    await prisma.recipeLine.create({
+      data: { sizeId: size.id, inventoryItemId: item.id, quantityPerUnit: 1 },
+    });
+
+    const result = await removeInventoryItem(ADMIN, item.id);
+
+    expect(result.ok).toBe(false);
+    expect(await prisma.inventoryItem.count({ where: { id: item.id } })).toBe(1);
+  });
+
+  it("el vendedor no puede eliminar", async () => {
+    const item = await makeItem(0);
+
+    const result = await removeInventoryItem(VENDEDOR, item.id);
+
+    expect(result.ok).toBe(false);
+    expect(await prisma.inventoryItem.count({ where: { id: item.id } })).toBe(1);
+  });
+
+  it("deja rastro en auditoría", async () => {
+    const item = await makeItem(10);
+    await removeInventoryItem(ADMIN, item.id);
+
+    const entry = await prisma.auditLog.findFirst({
+      where: { action: "insumo_archivado" },
+    });
+    expect(entry?.oldValue).toMatchObject({ nombre: "Hielo", movimientos: 1 });
   });
 });

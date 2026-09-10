@@ -2,6 +2,7 @@ import { verifySession } from "@/lib/dal";
 import { AppShell } from "@/components/shell/app-shell";
 import type { NavItem } from "@/components/shell/bottom-nav";
 import { ToastProvider } from "@/components/vendedor/toast";
+import { RoleSwitch } from "@/components/shell/role-switch";
 
 const NAV: NavItem[] = [
   { href: "/pos", label: "Nueva venta", icon: "storefront" },
@@ -17,8 +18,13 @@ export default async function VendedorLayout({ children }: LayoutProps<"/">) {
     <ToastProvider>
       <AppShell
         title="Granizados Oasis"
-        subtitle={`${session.name} · vendedor`}
+        subtitle={`${session.name} · ${
+          session.role === "ADMINISTRADOR" ? "administrador" : "vendedor"
+        }`}
         nav={NAV}
+        headerAction={
+          session.role === "ADMINISTRADOR" ? <RoleSwitch to="admin" /> : null
+        }
       >
         {children}
       </AppShell>

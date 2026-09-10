@@ -59,7 +59,7 @@ const EXPENSE_CATEGORIES = ["Materia prima", "Empaques", "Transporte", "Servicio
 // Los PINs vienen del entorno para no dejarlos escritos en el repositorio.
 // Sin variable definida caen en los de desarrollo, que solo sirven en local.
 const USERS = [
-  { id: "u_admin", name: "Camilo Restrepo", username: "camilo", pin: process.env.SEED_PIN_ADMIN ?? "9999", fromEnv: !!process.env.SEED_PIN_ADMIN, role: "ADMINISTRADOR" as const },
+  { id: "u_admin", name: "Esteban", username: "esteban", pin: process.env.SEED_PIN_ADMIN ?? "9999", fromEnv: !!process.env.SEED_PIN_ADMIN, role: "ADMINISTRADOR" as const },
   { id: "u_sara", name: "Sara Muñoz", username: "sara", pin: process.env.SEED_PIN_SARA ?? "1234", fromEnv: !!process.env.SEED_PIN_SARA, role: "VENDEDOR" as const },
   { id: "u_juan", name: "Juan Ospina", username: "juan", pin: process.env.SEED_PIN_JUAN ?? "1234", fromEnv: !!process.env.SEED_PIN_JUAN, role: "VENDEDOR" as const },
 ];

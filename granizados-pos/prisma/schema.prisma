@@ -169,6 +169,9 @@ model InventoryItem {
   unit        String // kg, unid, latas, l
   quantity    Float
   minimum     Float
+  // Un insumo con historial no se borra: se archiva, para no romper la
+  // trazabilidad de las ventas que lo consumieron.
+  active      Boolean             @default(true)
   flavors     Flavor[]
   addons      Addon[]
   movements   InventoryMovement[]

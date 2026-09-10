@@ -13,7 +13,7 @@ export default async function AdminProductosPage() {
     }),
     prisma.flavor.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.addon.findMany({ where: { active: true }, orderBy: { price: "asc" } }),
-    prisma.inventoryItem.findMany({ orderBy: { name: "asc" } }),
+    prisma.inventoryItem.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
   ]);
 
   const inventory = items.map((item) => ({

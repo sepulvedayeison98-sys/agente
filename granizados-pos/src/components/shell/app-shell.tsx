@@ -7,6 +7,7 @@ type AppShellProps = {
   nav: NavItem[];
   children: ReactNode;
   footer?: ReactNode;
+  headerAction?: ReactNode;
 };
 
 export function AppShell({
@@ -15,6 +16,7 @@ export function AppShell({
   nav,
   children,
   footer,
+  headerAction,
 }: AppShellProps) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
@@ -27,6 +29,7 @@ export function AppShell({
             {subtitle}
           </div>
         </div>
+        {headerAction}
       </header>
 
       <main className="flex-1 overflow-auto px-4 pb-3">{children}</main>

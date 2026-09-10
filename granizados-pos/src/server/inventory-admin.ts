@@ -183,3 +183,65 @@ export async function updateInventoryItem(
 
   return { ok: true };
 }
+
+export type DeleteOutcome =
+  | { ok: true; archived: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Un insumo que nunca se usó fue un error de captura y se borra de verdad.
+ * Uno con historial se archiva: borrarlo dejaría ventas apuntando a un insumo
+ * inexistente y rompería la trazabilidad, que es lo que hace útil el registro.
+ */
+export async function removeInventoryItem(
+  session: SessionPayload,
+  itemId: string,
+): Promise<DeleteOutcome> {
+  const denied = requireAdmin(session);
+  if (denied) return { ok: false, error: denied };
+
+  const item = await prisma.inventoryItem.findUnique({
+    where: { id: itemId },
+    select: { name: true, active: true },
+  });
+  if (!item) return { ok: false, error: "Ese insumo ya no existe." };
+
+  const [movements, flavors, addons, recipes] = await Promise.all([
+    prisma.inventoryMovement.count({ where: { itemId } }),
+    prisma.flavor.count({ where: { inventoryItemId: itemId } }),
+    prisma.addon.count({ where: { inventoryItemId: itemId } }),
+    prisma.recipeLine.count({ where: { inventoryItemId: itemId } }),
+  ]);
+
+  const inUse = flavors + addons + recipes > 0;
+  if (inUse) {
+    return {
+      ok: false,
+      error:
+        "Ese insumo está conectado a un sabor, adición o receta. Desconéctalo en Productos y precios antes de eliminarlo.",
+    };
+  }
+
+  const archived = movements > 0;
+
+  if (archived) {
+    await prisma.inventoryItem.update({
+      where: { id: itemId },
+      data: { active: false },
+    });
+  } else {
+    await prisma.inventoryItem.delete({ where: { id: itemId } });
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      userId: session.userId,
+      action: archived ? "insumo_archivado" : "insumo_eliminado",
+      entity: "InventoryItem",
+      entityId: itemId,
+      oldValue: { nombre: item.name, movimientos: movements },
+    },
+  });
+
+  return { ok: true, archived };
+}

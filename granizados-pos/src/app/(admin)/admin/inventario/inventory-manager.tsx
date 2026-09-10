@@ -8,10 +8,12 @@ import {
   PencilSimple,
   Plus,
   Scales,
+  Trash,
 } from "@phosphor-icons/react";
 import { formatQuantity } from "@/lib/money";
 import {
   addInventoryItem,
+  deleteInventoryItem,
   editInventoryItem,
   registerMovement,
 } from "@/server/actions/inventory";
@@ -58,6 +60,8 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
   const [openMovement, setOpenMovement] = useState<string | null>(null);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -106,6 +110,20 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
       });
       if (!result.ok) return setError(result.error);
       setEditing(null);
+    });
+  }
+
+  function remove(itemId: string) {
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteInventoryItem(itemId);
+      if (!result.ok) return setError(result.error);
+      setConfirmDelete(null);
+      setNotice(
+        result.archived
+          ? "Archivado: tenía movimientos, así que se conserva su historial y sale de la lista."
+          : "Eliminado.",
+      );
     });
   }
 
@@ -199,6 +217,18 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
         </div>
       ) : null}
 
+      {notice ? (
+        <p
+          className="animate-rise-in rounded-[var(--radius-md)] px-3 py-2 text-[11.5px]"
+          style={{
+            background: "var(--color-accent-900)",
+            boxShadow: "inset 0 0 0 1px var(--color-accent-700)",
+          }}
+        >
+          {notice}
+        </p>
+      ) : null}
+
       {rows.length === 0 ? (
         <p className="py-8 text-center text-[13px] text-[var(--color-neutral-400)]">
           Todavía no hay insumos. Crea el primero para que las ventas puedan
@@ -257,6 +287,21 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
               </button>
               <button
                 type="button"
+                aria-label={`Eliminar ${row.name}`}
+                onClick={() => {
+                  setConfirmDelete(confirmDelete === row.id ? null : row.id);
+                  setOpenMovement(null);
+                  setOpenHistory(null);
+                  setEditing(null);
+                  setError(null);
+                }}
+                className="pos-tap grid size-[32px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-divider)] text-[var(--color-neutral-400)]"
+              >
+                <Trash size={15} />
+              </button>
+
+              <button
+                type="button"
                 aria-label={`Mover existencias de ${row.name}`}
                 onClick={() => {
                   setOpenMovement(openMovement === row.id ? null : row.id);
@@ -270,6 +315,39 @@ export function InventoryManager({ rows }: { rows: InventoryRow[] }) {
                 Mover
               </button>
             </div>
+
+            {confirmDelete === row.id ? (
+              <div className="animate-rise-in mt-[9px] border-t border-[var(--color-divider)] pt-[9px]">
+                <p className="text-[12px]">
+                  ¿Eliminar {row.name}?
+                </p>
+                <p className="mt-[4px] text-[10.5px] text-[var(--color-neutral-400)]">
+                  Si ya tuvo movimientos se archiva en vez de borrarse, para no
+                  perder el rastro de las ventas que lo consumieron.
+                </p>
+                {error ? (
+                  <p className="mt-[6px] text-[11px] text-[var(--color-accent-300)]">{error}</p>
+                ) : null}
+                <div className="mt-[9px] flex gap-[7px]">
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => remove(row.id)}
+                    className="pos-tap grid h-[36px] flex-1 place-items-center rounded-[var(--radius-md)] border border-[var(--color-accent)] text-[12.5px] text-[var(--color-accent)] disabled:opacity-45"
+                    style={{ background: "color-mix(in srgb, var(--color-accent) 12%, transparent)" }}
+                  >
+                    {pending ? "Eliminando…" : "Sí, eliminar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(null)}
+                    className="pos-tap grid h-[36px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-divider)] px-3 text-[12.5px]"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {openMovement === row.id ? (
               <div className="animate-rise-in mt-[9px] border-t border-[var(--color-divider)] pt-[9px]">

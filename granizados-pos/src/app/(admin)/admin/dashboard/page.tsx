@@ -30,7 +30,7 @@ export default async function AdminDashboardPage({
       },
     }),
     prisma.expense.findMany({ where: { date: { gte: from, lte: to } } }),
-    prisma.inventoryItem.findMany(),
+    prisma.inventoryItem.findMany({ where: { active: true } }),
   ]);
 
   const revenue = sales.reduce((total, sale) => total + sale.total, 0);

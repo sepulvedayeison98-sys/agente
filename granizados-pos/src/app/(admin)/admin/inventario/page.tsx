@@ -8,6 +8,7 @@ export default async function AdminInventarioPage() {
   await requireAdmin();
 
   const items = await prisma.inventoryItem.findMany({
+    where: { active: true },
     orderBy: { name: "asc" },
     include: {
       movements: {
