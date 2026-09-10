@@ -154,6 +154,19 @@ async function main() {
     });
   }
 
+  const existingPromo = await prisma.promo.findFirst();
+  if (!existingPromo) {
+    await prisma.promo.create({
+      data: {
+        name: "Piña mediano + fruta",
+        sizeId: "m",
+        flavorId: "pina",
+        discount: 1500,
+        addons: { create: [{ addonId: "fruta" }] },
+      },
+    });
+  }
+
   console.log("Seed completado.");
 }
 

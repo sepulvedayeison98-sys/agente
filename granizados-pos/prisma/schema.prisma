@@ -78,6 +78,7 @@ model Size {
   active      Boolean      @default(true)
   recipeLines RecipeLine[]
   saleItems   SaleItem[]
+  promos      Promo[]
   createdAt   DateTime     @default(now())
 }
 
@@ -90,6 +91,7 @@ model Flavor {
   inventoryItemId String?
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
   saleItems       SaleItem[]
+  promos          Promo[]
   createdAt       DateTime       @default(now())
 }
 
@@ -104,6 +106,7 @@ model Addon {
   inventoryItem      InventoryItem?  @relation(fields: [inventoryItemId], references: [id])
   useQuantityPerUnit Float           @default(0) // consumo de insumo por unidad vendida de la adición
   saleItemAddons     SaleItemAddon[]
+  promoAddons        PromoAddon[]
   createdAt          DateTime        @default(now())
 }
 
@@ -258,4 +261,29 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// Promo del día: una combinación del catálogo con un descuento sobre su precio.
+model Promo {
+  id        String       @id @default(cuid())
+  name      String
+  sizeId    String
+  size      Size         @relation(fields: [sizeId], references: [id])
+  flavorId  String
+  flavor    Flavor       @relation(fields: [flavorId], references: [id])
+  discount  Int
+  active    Boolean      @default(true)
+  addons    PromoAddon[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model PromoAddon {
+  id      String @id @default(cuid())
+  promoId String
+  promo   Promo  @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  addonId String
+  addon   Addon  @relation(fields: [addonId], references: [id])
+
+  @@unique([promoId, addonId])
 }

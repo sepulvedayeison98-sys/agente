@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { resetDatabase } from "./reset";
 import { registerSale } from "@/server/sales";
 import type { SessionPayload } from "@/lib/session-token";
 
@@ -11,16 +12,7 @@ const SESSION: SessionPayload = {
 };
 
 async function resetCatalog() {
-  await prisma.saleItemAddon.deleteMany();
-  await prisma.saleItem.deleteMany();
-  await prisma.sale.deleteMany();
-  await prisma.recipeLine.deleteMany();
-  await prisma.addon.deleteMany();
-  await prisma.flavor.deleteMany();
-  await prisma.size.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.branch.deleteMany();
+  await resetDatabase();
 
   await prisma.branch.create({
     data: { id: "b_test", name: "Sucursal de prueba", isDefault: true },

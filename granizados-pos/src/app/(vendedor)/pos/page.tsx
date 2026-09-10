@@ -1,20 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { activePromo } from "@/server/promo";
 import { Configurator, type Favorite } from "./configurator";
-
-// La promo del día todavía no tiene entidad propia en el modelo de datos: se
-// define aquí hasta que se decida administrarla desde el panel.
-const PROMO: Favorite = {
-  sizeId: "m",
-  flavorId: "pina",
-  addonIds: ["fruta"],
-};
-const PROMO_DISCOUNT = 1500;
 
 export default async function PosPage({
   searchParams,
 }: PageProps<"/pos">) {
   const query = await searchParams;
-  const [sizes, flavors, addons, topItems] = await Promise.all([
+  const [sizes, flavors, addons, topItems, promo] = await Promise.all([
     prisma.size.findMany({
       where: { visible: true, active: true },
       orderBy: { price: "asc" },
@@ -39,6 +31,7 @@ export default async function PosPage({
         addons: { select: { addonId: true } },
       },
     }),
+    activePromo(),
   ]);
 
   const visibleSizes = new Set(sizes.map((s) => s.id));
@@ -93,19 +86,23 @@ export default async function PosPage({
         }
       : null;
 
-  const promoSellable =
-    visibleSizes.has(PROMO.sizeId) &&
-    visibleFlavors.has(PROMO.flavorId) &&
-    PROMO.addonIds.every((id) => visibleAddons.has(id));
-
   return (
     <Configurator
       sizes={sizes}
       flavors={flavors}
       addons={addons}
       favorites={favorites}
-      promo={promoSellable ? PROMO : null}
-      promoDiscount={PROMO_DISCOUNT}
+      promo={
+        promo
+          ? {
+              name: promo.name,
+              sizeId: promo.sizeId,
+              flavorId: promo.flavorId,
+              addonIds: promo.addonIds,
+              discount: promo.discount,
+            }
+          : null
+      }
       initial={initial}
     />
   );

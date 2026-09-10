@@ -24,13 +24,14 @@ export type Favorite = {
   addonIds: string[];
 };
 
+export type PromoOffer = Favorite & { name: string; discount: number };
+
 type ConfiguratorProps = {
   sizes: CatalogSize[];
   flavors: CatalogFlavor[];
   addons: CatalogAddon[];
   favorites: Favorite[];
-  promo: Favorite | null;
-  promoDiscount: number;
+  promo: PromoOffer | null;
   // Selección precargada al editar una línea del carrito.
   initial: Favorite | null;
 };
@@ -41,7 +42,6 @@ export function Configurator({
   addons,
   favorites,
   promo,
-  promoDiscount,
   initial,
 }: ConfiguratorProps) {
   const router = useRouter();
@@ -134,15 +134,12 @@ export function Configurator({
               Promo del día
             </div>
             <div className="font-[family-name:var(--font-heading)] text-[15px] font-medium">
-              {promoDetail.flavor.name} {promoDetail.size.name.toLowerCase()}
-              {promoDetail.addons.length
-                ? ` + ${promoDetail.addons.map((a) => a.name.toLowerCase()).join(" + ")}`
-                : ""}
+              {promo!.name}
             </div>
           </div>
           <div className="text-right">
             <div className="font-[family-name:var(--font-heading)] text-[16px]">
-              {formatCOP(promoDetail.price - promoDiscount)}
+              {formatCOP(Math.max(0, promoDetail.price - promo!.discount))}
             </div>
             <div className="text-[10px] text-[var(--color-neutral-400)] line-through">
               {formatCOP(promoDetail.price)}

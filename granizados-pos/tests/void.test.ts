@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { resetDatabase } from "./reset";
 import { registerSale } from "@/server/sales";
 import { executeVoid } from "@/server/admin-sales";
 import { totalsByMethod } from "@/server/shift";
@@ -19,21 +20,7 @@ const ADMIN: SessionPayload = {
 };
 
 async function seed() {
-  await prisma.cashMovement.deleteMany();
-  await prisma.cashClosure.deleteMany();
-  await prisma.auditLog.deleteMany();
-  await prisma.inventoryMovement.deleteMany();
-  await prisma.saleItemAddon.deleteMany();
-  await prisma.saleItem.deleteMany();
-  await prisma.sale.deleteMany();
-  await prisma.recipeLine.deleteMany();
-  await prisma.addon.deleteMany();
-  await prisma.flavor.deleteMany();
-  await prisma.size.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.inventoryItem.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.branch.deleteMany();
+  await resetDatabase();
 
   await prisma.branch.create({ data: { id: "b1", name: "Sucursal" } });
   await prisma.user.createMany({
