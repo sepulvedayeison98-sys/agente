@@ -17,7 +17,15 @@ function revalidateCatalog() {
 
 export async function createCatalogItem(
   kind: CatalogKind,
-  input: { name: string; price?: number; cost?: number },
+  input: {
+    name: string;
+    price?: number;
+    cost?: number;
+    // Sin insumo asociado, vender esto no descontaría nada del inventario.
+    inventoryItemId?: string | null;
+    useQuantityPerUnit?: number;
+    recipe?: RecipeInput;
+  },
 ): Promise<ActionResult> {
   await requireAdmin();
 
@@ -30,17 +38,119 @@ export async function createCatalogItem(
     return { ok: false, error: "El precio no es válido." };
   }
 
+  const inventoryItemId = input.inventoryItemId || null;
+  if (inventoryItemId) {
+    const exists = await prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+      select: { id: true },
+    });
+    if (!exists) return { ok: false, error: "Ese insumo ya no existe." };
+  }
+
   if (kind === "sizes") {
-    await prisma.size.create({
+    const size = await prisma.size.create({
       data: { name, price, productId: PRODUCT_ID },
     });
+    await saveSizeRecipe(size.id, input.recipe);
   } else if (kind === "flavors") {
-    await prisma.flavor.create({ data: { name } });
+    await prisma.flavor.create({ data: { name, inventoryItemId } });
   } else {
-    await prisma.addon.create({ data: { name, price, cost } });
+    await prisma.addon.create({
+      data: {
+        name,
+        price,
+        cost,
+        inventoryItemId,
+        useQuantityPerUnit: Math.max(0, input.useQuantityPerUnit ?? 0),
+      },
+    });
   }
 
   revalidateCatalog();
+  return { ok: true };
+}
+
+export type RecipeInput = {
+  cupItemId?: string | null;
+  iceItemId?: string | null;
+  ice?: number;
+  pulp?: number;
+};
+
+/**
+ * Receta de un tamaño: el vaso y el hielo son insumos fijos que elige el
+ * administrador; la pulpa lleva resolveItemFromFlavor porque la cantidad
+ * depende del tamaño pero el insumo depende del sabor que se venda.
+ */
+async function saveSizeRecipe(sizeId: string, recipe?: RecipeInput) {
+  if (!recipe) return;
+
+  await prisma.recipeLine.deleteMany({ where: { sizeId } });
+
+  const lines = [];
+  if (recipe.cupItemId) {
+    lines.push({ sizeId, inventoryItemId: recipe.cupItemId, quantityPerUnit: 1 });
+  }
+  if (recipe.iceItemId && recipe.ice && recipe.ice > 0) {
+    lines.push({ sizeId, inventoryItemId: recipe.iceItemId, quantityPerUnit: recipe.ice });
+  }
+  if (recipe.pulp && recipe.pulp > 0) {
+    lines.push({ sizeId, resolveItemFromFlavor: true, quantityPerUnit: recipe.pulp });
+  }
+
+  if (lines.length) await prisma.recipeLine.createMany({ data: lines });
+}
+
+export async function updateCatalogLink(
+  kind: CatalogKind,
+  id: string,
+  input: {
+    inventoryItemId?: string | null;
+    useQuantityPerUnit?: number;
+    recipe?: RecipeInput;
+  },
+): Promise<ActionResult> {
+  const session = await requireAdmin();
+
+  const inventoryItemId = input.inventoryItemId || null;
+  if (inventoryItemId) {
+    const exists = await prisma.inventoryItem.findUnique({
+      where: { id: inventoryItemId },
+      select: { id: true },
+    });
+    if (!exists) return { ok: false, error: "Ese insumo ya no existe." };
+  }
+
+  if (kind === "flavors") {
+    await prisma.flavor.update({ where: { id }, data: { inventoryItemId } });
+  } else if (kind === "addons") {
+    await prisma.addon.update({
+      where: { id },
+      data: {
+        inventoryItemId,
+        useQuantityPerUnit: Math.max(0, input.useQuantityPerUnit ?? 0),
+      },
+    });
+  } else {
+    await saveSizeRecipe(id, input.recipe);
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      userId: session.userId,
+      action: "receta_actualizada",
+      entity: kind === "sizes" ? "Size" : kind === "flavors" ? "Flavor" : "Addon",
+      entityId: id,
+      newValue: {
+        insumo: inventoryItemId,
+        consumo: input.useQuantityPerUnit,
+        receta: input.recipe ? JSON.stringify(input.recipe) : undefined,
+      },
+    },
+  });
+
+  revalidateCatalog();
+  revalidatePath("/admin/inventario");
   return { ok: true };
 }
 

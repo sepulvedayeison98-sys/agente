@@ -1,14 +1,22 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Eye, EyeSlash, PencilSimple, Plus } from "@phosphor-icons/react";
+import { Eye, EyeSlash, Package, PencilSimple, Plus } from "@phosphor-icons/react";
 import { formatCOP } from "@/lib/money";
 import {
   createCatalogItem,
   toggleCatalogVisibility,
   updateCatalogItem,
+  updateCatalogLink,
   type CatalogKind,
 } from "@/server/actions/catalog";
+
+export type Recipe = {
+  cupItemId: string | null;
+  iceItemId: string | null;
+  ice: number;
+  pulp: number;
+};
 
 export type CatalogRow = {
   id: string;
@@ -16,7 +24,12 @@ export type CatalogRow = {
   price: number | null;
   cost?: number;
   visible: boolean;
+  inventoryItemId?: string | null;
+  useQuantityPerUnit?: number;
+  recipe?: Recipe;
 };
+
+export type InventoryOption = { id: string; name: string; unit: string };
 
 type Props = {
   kind: CatalogKind;
@@ -25,7 +38,11 @@ type Props = {
   namePlaceholder: string;
   hasPrice?: boolean;
   hasCost?: boolean;
+  hasInsumo?: boolean;
+  hasConsumo?: boolean;
+  hasRecipe?: boolean;
   rows: CatalogRow[];
+  inventory: InventoryOption[];
 };
 
 export function CatalogSection({
@@ -35,17 +52,66 @@ export function CatalogSection({
   namePlaceholder,
   hasPrice = false,
   hasCost = false,
+  hasInsumo = false,
+  hasConsumo = false,
+  hasRecipe = false,
   rows,
+  inventory,
 }: Props) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [linking, setLinking] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", price: "", cost: "" });
+  const [link, setLink] = useState({
+    inventoryItemId: "",
+    useQuantityPerUnit: "",
+    cupItemId: "",
+    iceItemId: "",
+    ice: "",
+    pulp: "",
+  });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function reset() {
     setForm({ name: "", price: "", cost: "" });
     setError(null);
+  }
+
+  function openLink(row: CatalogRow) {
+    const next = linking === row.id ? null : row.id;
+    setLinking(next);
+    setAdding(false);
+    setEditing(null);
+    setError(null);
+    setLink({
+      inventoryItemId: row.inventoryItemId ?? "",
+      useQuantityPerUnit: row.useQuantityPerUnit ? String(row.useQuantityPerUnit) : "",
+      cupItemId: row.recipe?.cupItemId ?? "",
+      iceItemId: row.recipe?.iceItemId ?? "",
+      ice: row.recipe?.ice ? String(row.recipe.ice) : "",
+      pulp: row.recipe?.pulp ? String(row.recipe.pulp) : "",
+    });
+  }
+
+  function saveLink(id: string) {
+    setError(null);
+    startTransition(async () => {
+      const result = await updateCatalogLink(kind, id, {
+        inventoryItemId: link.inventoryItemId || null,
+        useQuantityPerUnit: Number(link.useQuantityPerUnit || 0),
+        recipe: hasRecipe
+          ? {
+              cupItemId: link.cupItemId || null,
+              iceItemId: link.iceItemId || null,
+              ice: Number(link.ice || 0),
+              pulp: Number(link.pulp || 0),
+            }
+          : undefined,
+      });
+      if (!result.ok) return setError(result.error);
+      setLinking(null);
+    });
   }
 
   function create() {
@@ -88,6 +154,11 @@ export function CatalogSection({
   const input =
     "h-[36px] w-full rounded-[var(--radius-md)] bg-[var(--color-bg)] px-[10px] text-[13px] outline-none";
   const inputRing = { boxShadow: "inset 0 0 0 1px var(--color-divider)" };
+  const labelSmall = "text-[11px] text-[var(--color-neutral-400)]";
+
+  // Un renglón sin insumo (o sin receta) se vende sin tocar el inventario.
+  const linkedOf = (row: CatalogRow) =>
+    hasRecipe ? !!row.recipe?.cupItemId || !!row.recipe?.pulp : !!row.inventoryItemId;
 
   return (
     <section>
@@ -233,6 +304,23 @@ export function CatalogSection({
                 {row.visible ? <EyeSlash size={15} /> : <Eye size={15} />}
               </button>
 
+              {hasInsumo || hasRecipe ? (
+              <button
+                type="button"
+                aria-label={`Insumo de ${row.name}`}
+                title="Conectar con inventario"
+                onClick={() => openLink(row)}
+                className="pos-tap grid size-[32px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-divider)]"
+                style={{
+                  color: linkedOf(row)
+                    ? "var(--color-accent)"
+                    : "var(--color-neutral-500)",
+                }}
+              >
+                <Package size={15} />
+              </button>
+              ) : null}
+
               <button
                 type="button"
                 aria-label={`Editar ${row.name}`}
@@ -252,6 +340,121 @@ export function CatalogSection({
                 <PencilSimple size={15} />
               </button>
             </div>
+
+            {linking === row.id ? (
+              <div className="animate-rise-in mt-[9px] border-t border-[var(--color-divider)] pt-[9px]">
+                {hasRecipe ? (
+                  <>
+                    <label className={labelSmall}>Vaso que gasta</label>
+                    <select
+                      value={link.cupItemId}
+                      onChange={(e) => setLink({ ...link, cupItemId: e.target.value })}
+                      className={`mt-[4px] mb-2 ${input}`}
+                      style={inputRing}
+                    >
+                      <option value="">Sin vaso</option>
+                      {inventory.map((i) => (
+                        <option key={i.id} value={i.id}>{i.name}</option>
+                      ))}
+                    </select>
+
+                    <div className="flex gap-2">
+                      <div className="flex-[1.4]">
+                        <label className={labelSmall}>Hielo</label>
+                        <select
+                          value={link.iceItemId}
+                          onChange={(e) => setLink({ ...link, iceItemId: e.target.value })}
+                          className={`mt-[4px] ${input}`}
+                          style={inputRing}
+                        >
+                          <option value="">Sin hielo</option>
+                          {inventory.map((i) => (
+                            <option key={i.id} value={i.id}>{i.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <label className={labelSmall}>Cantidad</label>
+                        <input
+                          value={link.ice}
+                          onChange={(e) => setLink({ ...link, ice: e.target.value })}
+                          inputMode="decimal"
+                          placeholder="0.5"
+                          className={`mt-[4px] ${input}`}
+                          style={inputRing}
+                        />
+                      </div>
+                    </div>
+
+                    <label className={`mt-2 block ${labelSmall}`}>
+                      Pulpa por unidad (usa el insumo del sabor vendido)
+                    </label>
+                    <input
+                      value={link.pulp}
+                      onChange={(e) => setLink({ ...link, pulp: e.target.value })}
+                      inputMode="decimal"
+                      placeholder="0.12"
+                      className={`mt-[4px] ${input}`}
+                      style={inputRing}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className={labelSmall}>Insumo que descuenta</label>
+                    <select
+                      value={link.inventoryItemId}
+                      onChange={(e) => setLink({ ...link, inventoryItemId: e.target.value })}
+                      className={`mt-[4px] ${input}`}
+                      style={inputRing}
+                    >
+                      <option value="">Ninguno (no descuenta inventario)</option>
+                      {inventory.map((i) => (
+                        <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
+                      ))}
+                    </select>
+
+                    {hasConsumo ? (
+                      <>
+                        <label className={`mt-2 block ${labelSmall}`}>
+                          Cantidad que gasta por unidad vendida
+                        </label>
+                        <input
+                          value={link.useQuantityPerUnit}
+                          onChange={(e) => setLink({ ...link, useQuantityPerUnit: e.target.value })}
+                          inputMode="decimal"
+                          placeholder="0.05"
+                          className={`mt-[4px] ${input}`}
+                          style={inputRing}
+                        />
+                      </>
+                    ) : null}
+                  </>
+                )}
+
+                {error ? (
+                  <p className="mt-[6px] text-[11px] text-[var(--color-accent-300)]">{error}</p>
+                ) : null}
+
+                <div className="mt-[9px] flex gap-[7px]">
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => saveLink(row.id)}
+                    className="pos-tap grid h-[36px] flex-1 place-items-center rounded-[var(--radius-md)] border border-[var(--color-accent)] text-[12.5px] text-[var(--color-accent)] disabled:opacity-45"
+                    style={{ background: "color-mix(in srgb, var(--color-accent) 12%, transparent)" }}
+                  >
+                    {pending ? "Guardando…" : "Guardar receta"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLinking(null)}
+                    className="pos-tap grid h-[36px] flex-none place-items-center rounded-[var(--radius-md)] border border-[var(--color-divider)] px-3 text-[12.5px]"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {editing === row.id ? (
               <div className="animate-rise-in mt-[9px] border-t border-[var(--color-divider)] pt-[9px]">
