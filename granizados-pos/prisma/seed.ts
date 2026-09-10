@@ -1,10 +1,10 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL ?? "",
 });
 const prisma = new PrismaClient({ adapter });
 
@@ -56,11 +56,12 @@ const ADDONS = [
 
 const EXPENSE_CATEGORIES = ["Materia prima", "Empaques", "Transporte", "Servicios"];
 
-// PINs de desarrollo — cambiar antes de usar en producción.
+// Los PINs vienen del entorno para no dejarlos escritos en el repositorio.
+// Sin variable definida caen en los de desarrollo, que solo sirven en local.
 const USERS = [
-  { id: "u_admin", name: "Camilo Restrepo", username: "camilo", pin: "9999", role: "ADMINISTRADOR" as const },
-  { id: "u_sara", name: "Sara Muñoz", username: "sara", pin: "1234", role: "VENDEDOR" as const },
-  { id: "u_juan", name: "Juan Ospina", username: "juan", pin: "1234", role: "VENDEDOR" as const },
+  { id: "u_admin", name: "Camilo Restrepo", username: "camilo", pin: process.env.SEED_PIN_ADMIN ?? "9999", fromEnv: !!process.env.SEED_PIN_ADMIN, role: "ADMINISTRADOR" as const },
+  { id: "u_sara", name: "Sara Muñoz", username: "sara", pin: process.env.SEED_PIN_SARA ?? "1234", fromEnv: !!process.env.SEED_PIN_SARA, role: "VENDEDOR" as const },
+  { id: "u_juan", name: "Juan Ospina", username: "juan", pin: process.env.SEED_PIN_JUAN ?? "1234", fromEnv: !!process.env.SEED_PIN_JUAN, role: "VENDEDOR" as const },
 ];
 
 async function main() {
@@ -74,7 +75,15 @@ async function main() {
     const pinHash = await bcrypt.hash(user.pin, 10);
     await prisma.user.upsert({
       where: { id: user.id },
-      update: { name: user.name, username: user.username, role: user.role, branchId: BRANCH_ID },
+      // El PIN solo se reescribe cuando llega explícito por entorno: así un
+      // re-seed no le borra el PIN a un usuario que ya venía trabajando.
+      update: {
+        name: user.name,
+        username: user.username,
+        role: user.role,
+        branchId: BRANCH_ID,
+        ...(user.fromEnv ? { pinHash } : {}),
+      },
       create: {
         id: user.id,
         name: user.name,
