@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/dal";
 import { AppShell } from "@/components/shell/app-shell";
+import { AdminTabs } from "@/components/shell/admin-tabs";
 import type { NavItem } from "@/components/shell/bottom-nav";
 
 const NAV: NavItem[] = [
@@ -18,6 +19,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
       subtitle={`Administrador · ${session.name}`}
       nav={NAV}
     >
+      <AdminTabs />
       {children}
     </AppShell>
   );
