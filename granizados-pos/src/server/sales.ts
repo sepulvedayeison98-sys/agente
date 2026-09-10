@@ -3,6 +3,7 @@ import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { AddonModel, FlavorModel, SizeModel } from "@/generated/prisma/models";
 import { prisma } from "@/lib/prisma";
 import type { SessionPayload } from "@/lib/session-token";
+import { computeConsumption, round } from "@/server/inventory";
 
 export type SaleRequestLine = {
   sizeId: string;
@@ -120,6 +121,30 @@ export async function registerSale(
     }
   }
 
+  // Cada venta confirmada descuenta inventario según la receta configurada.
+  const recipes = await prisma.recipeLine.findMany({
+    where: { sizeId: { in: priced.map((item) => item.size.id) } },
+    select: {
+      sizeId: true,
+      inventoryItemId: true,
+      resolveItemFromFlavor: true,
+      quantityPerUnit: true,
+    },
+  });
+
+  const consumption = computeConsumption(
+    priced.map((item) => ({
+      sizeId: item.size.id,
+      flavorInventoryItemId: item.flavor.inventoryItemId,
+      quantity: item.line.quantity,
+      addons: item.addons.map((addon) => ({
+        inventoryItemId: addon.inventoryItemId,
+        useQuantityPerUnit: addon.useQuantityPerUnit,
+      })),
+    })),
+    recipes,
+  );
+
   for (let attempt = 0; attempt < MAX_NUMBER_RETRIES; attempt++) {
     try {
       const sale = await prisma.$transaction(async (tx) => {
@@ -129,7 +154,7 @@ export async function registerSale(
         });
         const number = (last?.number ?? 0) + 1;
 
-        return tx.sale.create({
+        const created = await tx.sale.create({
           data: {
             number,
             branchId: session.branchId,
@@ -156,6 +181,32 @@ export async function registerSale(
             },
           },
         });
+
+        // Mismo commit que la venta: no puede quedar una venta sin su descuento.
+        for (const [itemId, quantity] of consumption) {
+          const item = await tx.inventoryItem.findUnique({
+            where: { id: itemId },
+            select: { quantity: true },
+          });
+          if (!item) continue;
+
+          await tx.inventoryItem.update({
+            where: { id: itemId },
+            data: { quantity: round(item.quantity - quantity) },
+          });
+          await tx.inventoryMovement.create({
+            data: {
+              itemId,
+              type: "VENTA",
+              quantity,
+              userId: session.userId,
+              reason: `Venta #${number}`,
+              saleId: created.id,
+            },
+          });
+        }
+
+        return created;
       });
 
       return {

@@ -85,7 +85,8 @@ export default async function VentaPage({
         <div className="flex items-start gap-[7px] text-[11.5px] text-[var(--color-neutral-400)]">
           <Package size={14} className="mt-px text-[var(--color-accent)]" />
           <span>
-            El descuento automático de inventario se activa en el siguiente hito.
+            Inventario descontado automáticamente · vasos, hielo, pulpa y
+            adiciones
           </span>
         </div>
       </div>
