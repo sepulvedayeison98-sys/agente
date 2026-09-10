@@ -153,14 +153,14 @@ export async function registerSale(
     : new Map<string, number>();
 
   for (let attempt = 0; attempt < MAX_NUMBER_RETRIES; attempt++) {
+    const last = await prisma.sale.findFirst({
+      orderBy: { number: "desc" },
+      select: { number: true },
+    });
+    const number = (last?.number ?? 0) + 1;
+
     try {
       const sale = await prisma.$transaction(async (tx) => {
-        const last = await tx.sale.findFirst({
-          orderBy: { number: "desc" },
-          select: { number: true },
-        });
-        const number = (last?.number ?? 0) + 1;
-
         const created = await tx.sale.create({
           data: {
             number,
@@ -224,24 +224,27 @@ export async function registerSale(
         alreadyExisted: false,
       };
     } catch (error) {
-      if (isUniqueViolation(error, "idempotencyKey")) {
-        const concurrent = await prisma.sale.findUnique({
-          where: { idempotencyKey: request.idempotencyKey },
-        });
-        if (concurrent) {
-          return {
-            ok: true,
-            number: concurrent.number,
-            total: concurrent.total,
-            change: computeChange(request.method, request.received, concurrent.total),
-            alreadyExisted: true,
-          };
-        }
+      // La forma del error de unicidad cambia entre conectores, así que en vez
+      // de interpretarla se mira el estado de la base, que es inequívoco.
+
+      // Otro intento con la misma clave ganó la carrera: esa es la venta.
+      const concurrent = await prisma.sale.findUnique({
+        where: { idempotencyKey: request.idempotencyKey },
+      });
+      if (concurrent) {
+        return {
+          ok: true,
+          number: concurrent.number,
+          total: concurrent.total,
+          change: computeChange(request.method, request.received, concurrent.total),
+          alreadyExisted: true,
+        };
       }
-      // Dos cajas tomando el mismo consecutivo: reintenta con el siguiente.
-      if (isUniqueViolation(error, "number")) {
-        continue;
-      }
+
+      // Otra caja se llevó el consecutivo: reintenta con el siguiente.
+      const taken = await prisma.sale.findUnique({ where: { number } });
+      if (taken) continue;
+
       throw error;
     }
   }
@@ -258,35 +261,3 @@ function computeChange(
   return Math.max(0, (received ?? 0) - total);
 }
 
-/**
- * Prisma reporta el campo en conflicto de distinta forma según el conector:
- * `meta.target` en el flujo clásico y `meta.driverAdapterError` con los driver
- * adapters (el de SQLite que se usa en desarrollo). Se revisan ambas.
- */
-function isUniqueViolation(error: unknown, field: string): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const candidate = error as {
-    code?: string;
-    meta?: {
-      target?: unknown;
-      driverAdapterError?: {
-        cause?: {
-          constraint?: { fields?: unknown };
-          originalMessage?: unknown;
-        };
-      };
-    };
-  };
-  if (candidate.code !== "P2002") return false;
-
-  const target = candidate.meta?.target;
-  if (Array.isArray(target) && target.includes(field)) return true;
-  if (typeof target === "string" && target.includes(field)) return true;
-
-  const cause = candidate.meta?.driverAdapterError?.cause;
-  const fields = cause?.constraint?.fields;
-  if (Array.isArray(fields) && fields.includes(field)) return true;
-
-  const message = cause?.originalMessage;
-  return typeof message === "string" && message.includes(field);
-}
