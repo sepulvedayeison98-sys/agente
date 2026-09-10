@@ -11,7 +11,8 @@ export async function login(
   _prev: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
-  const username = String(formData.get("username") ?? "").trim();
+  // El teclado del teléfono suele mandar la primera letra en mayúscula.
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const pin = String(formData.get("pin") ?? "");
 
   if (!username || !pin) {

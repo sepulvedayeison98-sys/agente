@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { encrypt, SESSION_COOKIE } from "@/lib/session-token";
@@ -79,5 +81,60 @@ describe("permisos por rol", () => {
 
     expect(redirectTarget(response)).toContain("/login");
     vi.unstubAllEnvs();
+  });
+});
+
+// El panel vive en src/app/(admin)/admin/<ruta>. Se leen del disco para que
+// una pantalla nueva quede cubierta sola, sin acordarse de tocar esta prueba.
+const ADMIN_DIR = new URL("../src/app/(admin)/", import.meta.url).pathname;
+
+function adminFiles(): string[] {
+  const found: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name === "page.tsx" || entry.name === "layout.tsx") found.push(full);
+    }
+  };
+  walk(ADMIN_DIR);
+  return found;
+}
+
+function adminRoutes(): string[] {
+  return adminFiles()
+    .filter((file) => file.endsWith("page.tsx"))
+    .map((file) => "/" + relative(ADMIN_DIR, file).replace(/\/page\.tsx$/, ""));
+}
+
+describe("el vendedor no entra al panel del administrador", () => {
+  it("hay pantallas de administración que cubrir", () => {
+    expect(adminRoutes().length).toBeGreaterThan(0);
+  });
+
+  it("ninguna ruta del panel se le abre al vendedor", async () => {
+    const token = await cookieFor("VENDEDOR");
+
+    for (const route of adminRoutes()) {
+      const response = await proxy(requestTo(route, token));
+      expect(redirectTarget(response), route).toContain("/pos");
+    }
+  });
+
+  it("todas se le abren al administrador", async () => {
+    const token = await cookieFor("ADMINISTRADOR");
+
+    for (const route of adminRoutes()) {
+      const response = await proxy(requestTo(route, token));
+      expect(redirectTarget(response), route).toBeNull();
+    }
+  });
+
+  // Segunda barrera: aunque el proxy fallara, el servidor vuelve a preguntar.
+  it("cada pantalla del panel exige administrador por su cuenta", () => {
+    for (const file of adminFiles()) {
+      const source = readFileSync(file, "utf8");
+      expect(source, relative(ADMIN_DIR, file)).toContain("requireAdmin");
+    }
   });
 });

@@ -26,11 +26,11 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 Creados por el seed. **Cambiar los PIN antes de usar en producción.**
 
-| Usuario  | PIN  | Rol           |
-| -------- | ---- | ------------- |
-| `camilo` | 9999 | Administrador |
-| `sara`   | 1234 | Vendedor      |
-| `juan`   | 1234 | Vendedor      |
+| Usuario   | PIN  | Rol           |
+| --------- | ---- | ------------- |
+| `esteban` | 9999 | Administrador |
+| `helen`   | 1234 | Vendedor      |
+| `juan`    | 1234 | Vendedor      |
 
 ## Estructura
 
