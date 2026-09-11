@@ -19,6 +19,7 @@ export default async function VendedorLayout({ children }: LayoutProps<"/">) {
     <ToastProvider>
       <AppShell
         ambient
+        glass
         title="Granizados Oasis"
         subtitle={`${session.name} · ${
           session.role === "ADMINISTRADOR" ? "administrador" : "vendedor"

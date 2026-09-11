@@ -328,3 +328,51 @@ body {
 .neon-ink {
   color: color-mix(in srgb, var(--tint) 72%, #ffffff);
 }
+
+/* ---------------------------------------------------------------------------
+   Cristal, solo donde se vende
+
+   Las tarjetas de todas las pantallas del vendedor salen de las mismas dos
+   variables, así que redefinirlas en el contenedor las cambia todas a la vez
+   —carrito, cobro, mis ventas, cierre y recibo— sin tocar una sola pantalla.
+
+   Van acotadas a este contenedor y no a `:root` porque el panel del
+   administrador se queda como está: ahí se leen cifras y tablas, y el cristal
+   añade ruido donde hace falta contraste plano. El panel recibe solo el fondo.
+--------------------------------------------------------------------------- */
+.oasis-glass {
+  --color-surface: rgb(35 37 50 / 0.86);
+
+  /* Elevación: borde fino, una línea de luz en el canto superior y sombra
+     difusa. El borde lleva un punto de acento mezclado con el gris —16 %, lo
+     justo para que se lea como cristal iluminado y no como una caja gris. */
+  --shadow-sm:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 16%, #3f424d),
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 6px 18px -12px rgb(0 0 0 / 0.9);
+  --shadow-md:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, #3f424d),
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 10px 26px -14px rgb(0 0 0 / 0.95);
+  --shadow-lg:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, #3f424d),
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 18px 40px -18px rgb(0 0 0 / 0.95),
+    0 0 34px -20px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+
+/* La barra inferior del vendedor flota sobre el fondo en vez de cortarlo con
+   una línea. Es un solo elemento fijo, así que el desenfoque aquí sí se paga. */
+.oasis-glass .oasis-nav {
+  background: rgb(22 24 38 / 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+/* El destino actual lleva halo, no solo color: en el mostrador el color solo
+   se pierde con el brillo bajo. */
+.oasis-glass .oasis-nav [data-active="true"] {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  box-shadow: 0 0 18px -8px color-mix(in srgb, var(--color-accent) 85%, transparent);
+}

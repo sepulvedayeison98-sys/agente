@@ -19,8 +19,11 @@ export function LoginForm() {
     // cargar en el teléfono, el navegador igual puede enviar usuario y PIN.
     <form
       action={formAction}
-      className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-4 pb-8 pt-16"
+      // La puerta de entrada lleva el fondo y el cristal: es lo primero que se
+      // ve del negocio, y de aquí sale tanto el vendedor como el administrador.
+      className="oasis-glass mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-4 pb-8 pt-16"
     >
+      <div aria-hidden className="oasis-ambient" />
       <div className="mb-7 text-center">
         {/* El logo es el neón de la marca: ya trae su propio resplandor, así
             que no lleva marco ni fondo que compitan con él. */}

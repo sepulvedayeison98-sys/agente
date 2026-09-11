@@ -36,7 +36,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
   const inCart = lines.reduce((total, line) => total + line.quantity, 0);
 
   return (
-    <nav className="flex gap-[2px] border-t border-[var(--color-divider)] px-2 pb-[34px] pt-[6px]">
+    <nav className="oasis-nav flex gap-[2px] border-t border-[var(--color-divider)] px-2 pb-[34px] pt-[6px]">
       {items.map((item) => {
         const Icon = ICONS[item.icon];
         const active = pathname.startsWith(item.href);
@@ -44,6 +44,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
+            data-active={active}
             className="pos-tap flex flex-1 flex-col items-center gap-[3px] rounded-[var(--radius-md)] py-[6px]"
             style={{
               color: active

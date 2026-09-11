@@ -17,6 +17,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
 
   return (
     <AppShell
+      // Solo el fondo: las tarjetas del panel se quedan como están.
+      ambient
       title="Granizados Oasis"
       subtitle={`Administrador · ${session.name}`}
       nav={NAV}
