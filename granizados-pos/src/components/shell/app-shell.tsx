@@ -9,6 +9,9 @@ type AppShellProps = {
   children: ReactNode;
   footer?: ReactNode;
   headerAction?: ReactNode;
+  /** El fondo con los neones y el logo de marca de agua. Solo el POS lo pide:
+      el panel del administrador es para leer cifras, y ahí el fondo estorba. */
+  ambient?: boolean;
 };
 
 export function AppShell({
@@ -18,9 +21,11 @@ export function AppShell({
   children,
   footer,
   headerAction,
+  ambient = false,
 }: AppShellProps) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
+      {ambient ? <div aria-hidden className="oasis-ambient" /> : null}
       <header className="flex items-center gap-[9px] px-4 pb-[10px] pt-[6px]">
         <Image
           src="/logo-oasis-sm.png"

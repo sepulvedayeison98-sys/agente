@@ -14,6 +14,7 @@ import { addLine, useCart } from "@/components/vendedor/use-cart";
 import { useToast } from "@/components/vendedor/toast";
 import { cartCount, cartTotal, lineTitle } from "@/lib/cart";
 import { formatCOP } from "@/lib/money";
+import { neonPorAdicion, neonPorTamano } from "@/lib/neon";
 
 export type CatalogSize = { id: string; name: string; price: number };
 export type CatalogFlavor = { id: string; name: string; color: string | null };
@@ -118,18 +119,11 @@ export function Configurator({
   const count = cartCount(lines);
   const total = cartTotal(lines);
 
-  // Lo seleccionado llevaba solo un borde tenue del color del acento: con sol
-  // en el mostrador y el brillo bajo, no se distinguía de lo no seleccionado.
-  // Relleno, borde y halo dicen lo mismo tres veces.
-  const ring = (on: boolean) =>
-    on
-      ? "inset 0 0 0 1px var(--color-accent), 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent)"
-      : "inset 0 0 0 1px var(--color-divider)";
-  const fg = (on: boolean) => (on ? "#ffffff" : "var(--color-text)");
-  const bg = (on: boolean) =>
-    on
-      ? "color-mix(in srgb, var(--color-accent) 24%, var(--color-surface))"
-      : "var(--color-surface)";
+  // Cada tarjeta lleva el color de su producto en `--tint` y `.neon-card` se
+  // encarga del resto: borde, relleno, halo y profundidad. Lo que dice "esto
+  // elegiste" es la intensidad, no el tono —con sol en el mostrador un borde
+  // tenue no se distingue—, así que `data-on` sube las tres cosas de golpe.
+  const tint = (color: string) => ({ "--tint": color }) as React.CSSProperties;
 
   // El licor va aparte: cuesta más, se sirve distinto y no se le echa a un
   // granizado sin querer. El botón "Todas" solo alcanza a las adiciones.
@@ -229,7 +223,12 @@ export function Configurator({
                   key={`${fav.sizeId}-${fav.flavorId}-${index}`}
                   type="button"
                   onClick={() => add(fav)}
-                  className="pos-tap flex min-h-[64px] flex-col justify-between rounded-[var(--radius-md)] bg-[var(--color-surface)] px-[11px] py-[10px] text-left shadow-[var(--shadow-sm)]"
+                  data-level="1"
+                  // El más vendido se pinta del color de su sabor: el mismo que
+                  // lleva abajo en "Armar granizado", para que sean la misma
+                  // cosa vista dos veces y no dos productos distintos.
+                  style={tint(detail.flavor.color ?? "var(--color-accent)")}
+                  className="neon-card pos-tap flex min-h-[68px] flex-col justify-between px-[12px] py-[11px] text-left"
                 >
                   <div className="font-[family-name:var(--font-heading)] text-[14px] font-medium leading-[1.15]">
                     {detail.flavor.name} {detail.size.name.toLowerCase()}
@@ -240,7 +239,7 @@ export function Configurator({
                         ? detail.addons.map((a) => a.name).join(" + ")
                         : "Sin adiciones"}
                     </span>
-                    <span className="text-[13px] text-[var(--color-accent-300)]">
+                    <span className="neon-ink font-[family-name:var(--font-heading)] text-[14px] font-medium">
                       {formatCOP(detail.price)}
                     </span>
                   </div>
@@ -257,21 +256,23 @@ export function Configurator({
         </h2>
 
         <div className="grid grid-cols-4 gap-[6px]">
-          {sizes.map((option) => {
+          {sizes.map((option, index) => {
             const on = option.id === sizeId;
             return (
               <button
                 key={option.id}
                 type="button"
                 onClick={() => setSizeId(option.id)}
-                className="pos-tap rounded-[var(--radius-md)] px-1 py-[9px] text-center"
-                style={{ boxShadow: ring(on), background: bg(on) }}
+                data-on={on}
+                data-level="2"
+                // Por posición, que viene ordenada por precio: el tamaño
+                // conserva su color mientras el precio no cambie de orden.
+                style={tint(neonPorTamano(index))}
+                className="neon-card pos-tap px-1 py-[10px] text-center"
               >
-                <div className="text-[11.5px]" style={{ color: fg(on) }}>
-                  {option.name}
-                </div>
+                <div className="text-[11.5px]">{option.name}</div>
                 <div
-                  className="mt-[2px] font-[family-name:var(--font-heading)] text-[13.5px]"
+                  className={`mt-[2px] font-[family-name:var(--font-heading)] text-[13.5px] ${on ? "" : "neon-ink"}`}
                   style={{ fontWeight: on ? 600 : 400 }}
                 >
                   {formatCOP(option.price)}
@@ -289,13 +290,15 @@ export function Configurator({
                 key={option.id}
                 type="button"
                 onClick={() => setFlavorId(option.id)}
-                className="pos-tap flex h-[50px] items-center justify-center gap-[7px] rounded-[var(--radius-md)] text-[13px]"
+                data-on={on}
+                data-level="2"
+                // El color lo elige el administrador en el panel; aquí solo se
+                // usa. Sin color asignado, el sabor cae en el acento.
                 style={{
-                  boxShadow: ring(on),
-                  color: fg(on),
-                  background: bg(on),
+                  ...tint(option.color ?? "var(--color-accent)"),
                   fontWeight: on ? 600 : 400,
                 }}
+                className="neon-card pos-tap flex h-[52px] items-center justify-center gap-[7px] px-2 text-[13px] leading-tight"
               >
                 {/* El punto identifica el sabor de un vistazo cuando hay fila;
                     nunca indica estado, así que no compite con el acento. */}
@@ -330,13 +333,13 @@ export function Configurator({
                       : [...withoutPlain, ...plainAddons.map((a) => a.id)];
                   })
                 }
-                className="pos-tap flex flex-none items-center gap-[5px] rounded-[var(--radius-md)] px-[10px] py-[5px] text-[11.5px]"
+                data-on={allAddonsOn}
+                data-level="3"
                 style={{
-                  boxShadow: ring(allAddonsOn),
-                  color: fg(allAddonsOn),
-                  background: bg(allAddonsOn),
+                  ...tint("var(--color-accent)"),
                   fontWeight: allAddonsOn ? 600 : 400,
                 }}
+                className="neon-card pos-tap flex flex-none items-center gap-[5px] px-[10px] py-[6px] text-[11.5px]"
               >
                 <ListChecks size={14} />
                 {allAddonsOn ? "Quitar todas" : "Todas"}
@@ -364,16 +367,21 @@ export function Configurator({
                       : [...current, option.id],
                   )
                 }
-                className="pos-tap flex items-center gap-[6px] rounded-[var(--radius-md)] px-[11px] py-2 text-[12.5px]"
+                data-on={on}
+                data-level="3"
+                // Por identificador y no por posición: varias adiciones cuestan
+                // lo mismo, así que el orden entre ellas puede cambiar de una
+                // carga a otra y el color se movería con él.
                 style={{
-                  boxShadow: ring(on),
-                  color: fg(on),
-                  background: bg(on),
+                  ...tint(neonPorAdicion(option.id, option.name)),
                   fontWeight: on ? 600 : 400,
                 }}
+                className="neon-card pos-tap flex items-center gap-[6px] px-[11px] py-[9px] text-[12.5px]"
               >
                 {option.name}
-                <span className="text-[11px] text-[var(--color-neutral-400)]">
+                <span
+                  className={on ? "text-[11px] opacity-80" : "neon-ink text-[11px]"}
+                >
                   +{formatCOP(option.price)}
                 </span>
               </button>
@@ -406,19 +414,17 @@ export function Configurator({
                           : [...current, option.id],
                       )
                     }
-                    className="pos-tap flex items-center gap-[6px] rounded-[var(--radius-md)] px-[11px] py-2 text-[12.5px]"
+                    data-on={on}
+                    data-level="2"
                     style={{
-                      // El licor lleva el color de aviso, no el del acento: hay
-                      // que verlo distinto de una gomita antes de servirlo.
-                      boxShadow: on
-                        ? "inset 0 0 0 1px var(--color-warning), 0 0 0 3px color-mix(in srgb, var(--color-warning) 20%, transparent)"
-                        : "inset 0 0 0 1px color-mix(in srgb, var(--color-warning) 40%, transparent)",
-                      background: on
-                        ? "color-mix(in srgb, var(--color-warning) 22%, var(--color-surface))"
-                        : "var(--color-surface)",
+                      // El licor lleva el color de aviso, no uno de los neones
+                      // de producto: hay que verlo distinto de una gomita antes
+                      // de servirlo, y eso pesa más que la variedad de color.
+                      ...tint("var(--color-warning)"),
                       color: on ? "#ffffff" : "var(--color-warning)",
                       fontWeight: on ? 600 : 400,
                     }}
+                    className="neon-card pos-tap flex items-center gap-[6px] px-[11px] py-[9px] text-[12.5px]"
                   >
                     {option.name}
                     <span className="text-[11px] opacity-70">
@@ -433,7 +439,14 @@ export function Configurator({
       </section>
 
       {size && flavor ? (
-        <div className="sticky bottom-0 -mx-4 mt-auto rounded-t-[var(--radius-lg)] border-t border-[var(--color-divider)] bg-[var(--color-surface)] px-4 pb-[11px] pt-[11px] shadow-[var(--shadow-lg)]">
+        // El resumen sí lleva desenfoque: es un solo elemento fijo, y sobre el
+        // fondo de neones un panel opaco cortaría la profundidad en seco.
+        <div
+          className="sticky bottom-0 -mx-4 mt-auto rounded-t-[var(--radius-lg)] border-t border-[var(--color-divider)] px-4 pb-[11px] pt-[11px] shadow-[var(--shadow-lg)] backdrop-blur-md"
+          style={{
+            background: "color-mix(in srgb, var(--color-surface) 82%, transparent)",
+          }}
+        >
           <div className="flex items-baseline justify-between gap-[10px]">
             <span className="text-[13px]">
               Granizado {size.name.toLowerCase()} · {flavor.name}

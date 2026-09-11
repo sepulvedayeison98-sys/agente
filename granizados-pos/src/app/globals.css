@@ -50,6 +50,20 @@
   --color-brand-green: #5bd65b;
   --color-brand-cyan: #3dd0f4;
 
+  /* Los neones de las tarjetas del POS. Van aparte de los colores con
+     significado a propósito: estos identifican un producto, no un estado. Lo
+     que dice "esto elegiste" es la intensidad —borde, relleno y halo—, nunca
+     el tono, así que ninguno de estos compite con success, warning o danger.
+     Ver src/lib/neon.ts para saber cuál le toca a cada cosa. */
+  --neon-rosa: #ff2bd6;
+  --neon-morado: #a855f7;
+  --neon-azul: #00a8ff;
+  --neon-verde: #39ff14;
+  --neon-amarillo: #ffe600;
+  --neon-naranja: #ff9d00;
+  --neon-rojo: #ff3158;
+  --neon-cian: #00e5ff;
+
   --font-heading: var(--font-inter), "Inter", system-ui, sans-serif;
   --font-body: var(--font-inter), "Inter", system-ui, sans-serif;
 
@@ -117,9 +131,14 @@
   --shadow-lg: var(--shadow-lg);
 }
 
-html,
-body {
+/* El color va en `html` y no en `body`: con fondo propio, el body se pinta
+   sobre cualquier hijo con z-index negativo y se tragaba entera la capa de
+   ambiente del POS. Puesto en `html` se propaga al lienzo, detrás de todo. */
+html {
   background: var(--color-bg);
+}
+
+body {
   color: var(--color-text);
   font-family: var(--font-body);
 }
@@ -169,4 +188,143 @@ body {
 }
 .animate-rise-in {
   animation: rise-in 0.2s ease;
+}
+
+/* ---------------------------------------------------------------------------
+   Fondo de ambiente del POS
+
+   El negro plano hacía que las tarjetas flotaran sobre nada. Tres degradados
+   radiales muy tenues le dan profundidad sin pedir atención, y el logo va de
+   marca de agua detrás de todo, con una máscara radial para que se funda con
+   el fondo en vez de parecer una imagen pegada encima.
+
+   Es `fixed` para que no se mueva al desplazar la lista: el fondo es el local,
+   no el papel. `z-index: -1` lo deja detrás de todo sin tocar el orden del DOM.
+--------------------------------------------------------------------------- */
+.oasis-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      72% 46% at 50% -4%,
+      color-mix(in srgb, var(--neon-morado) 20%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      58% 40% at 8% 90%,
+      color-mix(in srgb, var(--neon-cian) 15%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      62% 42% at 94% 70%,
+      color-mix(in srgb, var(--neon-rosa) 15%, transparent),
+      transparent 70%
+    ),
+    var(--color-bg);
+}
+
+.oasis-ambient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/logo-oasis.png") no-repeat center 42% / min(108vw, 490px)
+    auto;
+  /* Dentro del 8-15 % pedido: se reconoce la marca sin pelear con los precios,
+     que es lo único que el operario tiene que leer rápido. */
+  opacity: 0.13;
+  /* `farthest-side`: con `closest-side` el desvanecido empezaba a un tercio del
+     logo y se lo comía casi entero. */
+  -webkit-mask-image: radial-gradient(
+    farthest-side at 50% 42%,
+    #000 40%,
+    transparent 95%
+  );
+  mask-image: radial-gradient(farthest-side at 50% 42%, #000 40%, transparent 95%);
+}
+
+/* ---------------------------------------------------------------------------
+   Tarjeta de neón
+
+   Una sola estructura para todo lo que se toca en el POS: mismo radio, mismo
+   relleno translúcido, misma lógica de sombra. Lo único que cambia es `--tint`,
+   el color del producto, y la intensidad con que se aplica.
+
+   La intensidad hace dos trabajos a la vez:
+
+   - Jerarquía. `data-level` baja el brillo de lo secundario para que los más
+     vendidos manden sobre las adiciones sin cambiar de tamaño ni de tipografía.
+   - Estado. `data-on` sube borde, relleno y halo de golpe. Con sol en el
+     mostrador un borde tenue no se distingue, así que lo elegido lo dice por
+     tres vías —relleno, borde y halo— más el peso de la letra.
+
+   Sin `backdrop-filter`: el cristal se consigue con el relleno translúcido y la
+   luz del borde superior. Veinte tarjetas desenfocando el fondo en un teléfono
+   de mostrador cuestan fluidez, y un POS lento es un POS que estorba.
+--------------------------------------------------------------------------- */
+.neon-card {
+  --tint: var(--color-accent);
+  --tint-border: 32%;
+  --tint-fill: 7%;
+  --tint-glow: 0%;
+
+  position: relative;
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(
+      152deg,
+      color-mix(in srgb, var(--tint) var(--tint-fill), transparent),
+      transparent 66%
+    ),
+    color-mix(in srgb, var(--color-surface) 86%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--tint) var(--tint-border), transparent),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 7%, transparent),
+    0 8px 26px -10px color-mix(in srgb, var(--tint) var(--tint-glow), transparent),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+  color: var(--color-text);
+  transition:
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+/* Nivel 1: los más vendidos y la promo. Mandan. */
+.neon-card[data-level="1"] {
+  --tint-border: 60%;
+  --tint-fill: 12%;
+  --tint-glow: 62%;
+  border-radius: var(--radius-lg);
+}
+
+/* Nivel 3: las adiciones. Presentes, pero sin saturar la pantalla. */
+.neon-card[data-level="3"] {
+  --tint-border: 26%;
+  --tint-fill: 5%;
+}
+
+@media (hover: hover) {
+  .neon-card:hover {
+    --tint-border: 68%;
+    --tint-glow: 34%;
+  }
+}
+
+.neon-card[data-on="true"] {
+  --tint-border: 100%;
+  --tint-fill: 24%;
+  --tint-glow: 78%;
+  color: #ffffff;
+}
+
+.neon-card:disabled,
+.neon-card[aria-disabled="true"] {
+  opacity: 0.45;
+  filter: saturate(0.35);
+}
+
+/* El precio y el nombre toman el color del producto, apagados lo justo para
+   sostener el contraste sobre el fondo oscuro. */
+.neon-ink {
+  color: color-mix(in srgb, var(--tint) 72%, #ffffff);
 }
