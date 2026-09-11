@@ -4,11 +4,30 @@ import { useActionState, useState } from "react";
 import Image from "next/image";
 import { SignIn } from "@phosphor-icons/react";
 import { Keypad } from "@/components/ui/keypad";
+import { useHydrated } from "@/lib/use-hydrated";
 import { login, type LoginState } from "@/server/actions/auth";
 
 export function LoginForm() {
   const [username, setUsername] = useState("");
   const [pin, setPin] = useState("");
+
+  /**
+   * Salían los dos teclados a la vez: el de la pantalla y el del teléfono
+   * encima, tapando media página.
+   *
+   * El campo del PIN es un input de verdad a propósito —así se puede entrar
+   * aunque el JavaScript no alcance a cargar—, y al tocarlo el teléfono abre
+   * el suyo. No se puede quitar en el HTML que llega del servidor sin perder
+   * ese camino de respaldo, así que se quita solo cuando el teclado de la
+   * pantalla ya está funcionando: hasta que el componente no monta en el
+   * navegador, el campo se comporta como siempre.
+   *
+   * `readOnly` es lo que de verdad impide que el teléfono abra su teclado, y
+   * no estorba el envío del formulario —a diferencia de `disabled`, un campo
+   * de solo lectura sí manda su valor—. `inputMode="none"` va además porque
+   * es lo que el estándar define para esto, pero no dependo solo de él.
+   */
+  const teclaPropia = useHydrated();
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
     login,
     {},
@@ -71,7 +90,8 @@ export function LoginForm() {
         id="pin"
         name="pin"
         type="password"
-        inputMode="numeric"
+        inputMode={teclaPropia ? "none" : "numeric"}
+        readOnly={teclaPropia}
         autoComplete="current-password"
         enterKeyHint="go"
         maxLength={6}
