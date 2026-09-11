@@ -6,6 +6,7 @@ import { LowStockAlert } from "@/components/inventory/low-stock-alert";
 import { getSetting } from "@/server/settings";
 import { PeriodChips } from "./period-chips";
 import { HourBars } from "./hour-bars";
+import { horaDelDia } from "@/lib/dia";
 
 export default async function AdminDashboardPage({
   searchParams,
@@ -59,7 +60,7 @@ export default async function AdminDashboardPage({
   const hours = Array.from({ length: 9 }, (_, index) => 10 + index);
   const byHour = new Map<number, number>();
   for (const sale of sales) {
-    const hour = sale.createdAt.getHours();
+    const hour = horaDelDia(sale.createdAt);
     byHour.set(hour, (byHour.get(hour) ?? 0) + sale.total);
   }
 

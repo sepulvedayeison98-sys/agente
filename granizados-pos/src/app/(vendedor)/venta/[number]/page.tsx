@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/dal";
 import { formatCOP } from "@/lib/money";
 import { SaleDoneActions } from "./actions";
+import { formatHora } from "@/lib/dia";
 
 const METHOD_LABELS: Record<string, string> = {
   EFECTIVO: "Efectivo",
@@ -40,11 +41,7 @@ export default async function VentaPage({
   const changeParam = Array.isArray(query.cambio) ? query.cambio[0] : query.cambio;
   const change = Number(changeParam ?? 0);
 
-  const time = sale.createdAt.toLocaleTimeString("es-CO", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const time = formatHora(sale.createdAt);
 
   return (
     <div className="animate-rise-in pt-[30px] text-center">

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { shiftSales, shiftStart, sumTotals, totalsByMethod } from "@/server/shift";
 import { ClosureForm } from "./closure-form";
 import { ClosedState } from "./closed-state";
+import { formatHora } from "@/lib/dia";
 
 export default async function CierrePage() {
   const session = await verifySession();
@@ -23,11 +24,7 @@ export default async function CierrePage() {
       return (
         <ClosedState
           shift={lastClosure.shift}
-          time={lastClosure.closedAt.toLocaleTimeString("es-CO", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })}
+          time={formatHora(lastClosure.closedAt)}
           difference={lastClosure.difference}
         />
       );

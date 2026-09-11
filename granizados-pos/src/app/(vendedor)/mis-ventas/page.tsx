@@ -3,6 +3,7 @@ import { formatCOP } from "@/lib/money";
 import { shiftSales, shiftStart, totalsByMethod } from "@/server/shift";
 import { prisma } from "@/lib/prisma";
 import { SalesList, type ShiftSale } from "./sales-list";
+import { formatHora } from "@/lib/dia";
 
 export default async function MisVentasPage() {
   const session = await verifySession();
@@ -25,11 +26,7 @@ export default async function MisVentasPage() {
 
   const list: ShiftSale[] = sales.map((sale) => ({
     number: sale.number,
-    time: sale.createdAt.toLocaleTimeString("es-CO", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }),
+    time: formatHora(sale.createdAt),
     method: sale.method,
     total: sale.total,
     voided: sale.status !== "OK",

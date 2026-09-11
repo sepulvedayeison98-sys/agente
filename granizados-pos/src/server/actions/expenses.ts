@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { fechaDelFormulario } from "@/lib/dia";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -28,7 +29,7 @@ export async function createExpense(input: {
   });
   if (!category) return { ok: false, error: "Elige una categoría." };
 
-  const date = input.date ? new Date(input.date) : new Date();
+  const date = fechaDelFormulario(input.date) ?? new Date();
   if (Number.isNaN(date.getTime())) {
     return { ok: false, error: "La fecha no es válida." };
   }

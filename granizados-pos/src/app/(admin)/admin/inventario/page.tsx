@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/dal";
 import { LowStockAlert } from "@/components/inventory/low-stock-alert";
 import { getSetting } from "@/server/settings";
 import { InventoryManager, type InventoryRow } from "./inventory-manager";
+import { formatFechaHora } from "@/lib/dia";
 
 export default async function AdminInventarioPage() {
   await requireAdmin();
@@ -36,13 +37,7 @@ export default async function AdminInventarioPage() {
       quantity: movement.quantity,
       reason: movement.reason,
       user: movement.user.name,
-      date: movement.createdAt.toLocaleString("es-CO", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }),
+      date: formatFechaHora(movement.createdAt),
     })),
   }));
 

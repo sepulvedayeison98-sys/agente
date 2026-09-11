@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { isPeriodId, resolvePeriod } from "@/server/periods";
+import { diaDeLaSemana, partesEnZona } from "@/lib/dia";
 
-// Miércoles 10 de septiembre de 2026, 15:30.
-const NOW = new Date(2026, 8, 10, 15, 30, 0);
+// Jueves 10 de septiembre de 2026, 3:30 p.m. en Medellín.
+const NOW = new Date("2026-09-10T20:30:00Z");
 
-const iso = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+/**
+ * Los rangos se leen con el reloj de Medellín, que es donde está el negocio.
+ * Leerlos con el del proceso —UTC en las pruebas, igual que en Vercel— era
+ * justo lo que tapaba el desfase de cinco horas.
+ */
+const iso = (date: Date) => {
+  const { year, month, day, hour, minute } = partesEnZona(date);
+  const dosDigitos = (valor: number) => String(valor).padStart(2, "0");
+  return `${year}-${dosDigitos(month)}-${dosDigitos(day)} ${dosDigitos(hour)}:${dosDigitos(minute)}`;
+};
 
 describe("rangos de período", () => {
   it("hoy va de medianoche al final del día", () => {
@@ -23,17 +32,17 @@ describe("rangos de período", () => {
   it("la semana arranca el lunes", () => {
     const { from } = resolvePeriod("semana", undefined, NOW);
     expect(iso(from)).toBe("2026-09-07 00:00");
-    expect(from.getDay()).toBe(1);
+    expect(diaDeLaSemana(from)).toBe(0);
   });
 
   it("un lunes la semana arranca ese mismo día", () => {
-    const monday = new Date(2026, 8, 7, 9, 0, 0);
+    const monday = new Date("2026-09-07T14:00:00Z");
     const { from } = resolvePeriod("semana", undefined, monday);
     expect(iso(from)).toBe("2026-09-07 00:00");
   });
 
   it("un domingo sigue perteneciendo a la semana que arrancó el lunes", () => {
-    const sunday = new Date(2026, 8, 13, 20, 0, 0);
+    const sunday = new Date("2026-09-14T01:00:00Z");
     const { from } = resolvePeriod("semana", undefined, sunday);
     expect(iso(from)).toBe("2026-09-07 00:00");
   });
@@ -49,9 +58,8 @@ describe("rangos de período", () => {
       { from: "2026-08-01", to: "2026-08-31" },
       NOW,
     );
-    expect(from.getMonth()).toBe(7);
-    expect(to.getMonth()).toBe(7);
-    expect(to.getDate()).toBe(31);
+    expect(iso(from)).toBe("2026-08-01 00:00");
+    expect(iso(to)).toBe("2026-08-31 23:59");
   });
 
   it("una fecha inválida cae en el día de hoy en vez de romper", () => {

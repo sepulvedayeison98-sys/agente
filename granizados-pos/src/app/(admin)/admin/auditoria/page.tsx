@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { formatFechaHora } from "@/lib/dia";
 
 const ACTION_LABELS: Record<string, string> = {
   solicitud_anulacion: "Solicitud de anulación",
@@ -52,13 +53,7 @@ export default async function AdminAuditoriaPage() {
                 {ACTION_LABELS[entry.action] ?? entry.action}
               </span>
               <span className="ml-auto text-[11px] text-[var(--color-neutral-400)]">
-                {entry.createdAt.toLocaleString("es-CO", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })}
+                {formatFechaHora(entry.createdAt)}
               </span>
             </div>
             <div className="mt-[3px] text-[11.5px] text-[var(--color-neutral-400)]">

@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { SalesTable, type AdminSale } from "./sales-table";
+import { formatHora } from "@/lib/dia";
 
 export default async function AdminVentasPage() {
   await requireAdmin();
@@ -31,11 +32,7 @@ export default async function AdminVentasPage() {
   const rows: AdminSale[] = sales.map((sale) => ({
     number: sale.number,
     seller: sale.user.name,
-    time: sale.createdAt.toLocaleTimeString("es-CO", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }),
+    time: formatHora(sale.createdAt),
     method: sale.method,
     total: sale.total,
     voided: sale.status !== "OK",

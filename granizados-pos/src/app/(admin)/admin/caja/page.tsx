@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { formatCOP, formatSignedCOP } from "@/lib/money";
+import { formatFechaHora } from "@/lib/dia";
 
 export default async function AdminCajaPage() {
   await requireAdmin();
@@ -33,13 +34,7 @@ export default async function AdminCajaPage() {
                 {closure.shift}
               </span>
               <span className="text-[11px] text-[var(--color-neutral-400)]">
-                {closure.closedAt.toLocaleString("es-CO", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })}
+                {formatFechaHora(closure.closedAt)}
               </span>
               <span
                 className="ml-auto font-[family-name:var(--font-heading)] text-[14px]"

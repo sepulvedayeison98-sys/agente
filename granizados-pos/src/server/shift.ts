@@ -1,6 +1,7 @@
 import "server-only";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import { inicioDelDia } from "@/lib/dia";
 
 export type MethodTotals = Record<PaymentMethod, number>;
 
@@ -20,9 +21,7 @@ export async function shiftStart(userId: string): Promise<Date> {
   });
   if (lastClosure) return lastClosure.closedAt;
 
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  return start;
+  return inicioDelDia();
 }
 
 export async function shiftSales(userId: string, from: Date) {

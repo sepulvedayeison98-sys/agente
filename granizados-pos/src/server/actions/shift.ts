@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { verifySession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { horaDelDia } from "@/lib/dia";
 import {
   shiftSales,
   shiftStart,
@@ -107,7 +108,7 @@ export async function closeShift(counted: number): Promise<ActionResult> {
 }
 
 function shiftLabel(at: Date): string {
-  const hour = at.getHours();
+  const hour = horaDelDia(at);
   if (hour < 14) return "Turno mañana";
   if (hour < 20) return "Turno tarde";
   return "Turno noche";

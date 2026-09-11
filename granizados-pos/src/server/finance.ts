@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { Range } from "@/server/periods";
 import { emptyTotals, totalsByMethod, type MethodTotals } from "@/server/shift";
+import { horaDelDia } from "@/lib/dia";
 
 export type FinanceSummary = {
   revenue: number;
@@ -91,7 +92,7 @@ export async function rankings({ from, to }: Range) {
     select: { createdAt: true, total: true },
   });
   for (const sale of sales) {
-    bump(hours, `${String(sale.createdAt.getHours()).padStart(2, "0")}:00`, sale.total);
+    bump(hours, `${String(horaDelDia(sale.createdAt)).padStart(2, "0")}:00`, sale.total);
   }
 
   return {

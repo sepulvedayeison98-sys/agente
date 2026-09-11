@@ -28,6 +28,9 @@ export default defineConfig({
     env: {
       DATABASE_URL: "file:./tests/test.db",
       SESSION_SECRET: "secreto-solo-para-pruebas",
+      // La misma zona del servidor en Vercel. Las fechas del negocio se
+      // cuentan en Medellín, así que si algo la da por sentada, aquí falla.
+      TZ: "UTC",
     },
   },
 });

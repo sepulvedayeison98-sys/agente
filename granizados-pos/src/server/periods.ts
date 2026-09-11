@@ -1,3 +1,12 @@
+import {
+  diaDeLaSemana,
+  fechaDelFormulario,
+  finDelDia,
+  inicioDelDia,
+  inicioDelMes,
+  sumarDias,
+} from "@/lib/dia";
+
 export type PeriodId = "hoy" | "ayer" | "semana" | "mes" | "personalizado";
 
 export const PERIODS: { id: PeriodId; label: string }[] = [
@@ -10,20 +19,11 @@ export const PERIODS: { id: PeriodId; label: string }[] = [
 
 export type Range = { from: Date; to: Date };
 
-function startOfDay(date: Date): Date {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
-
-function endOfDay(date: Date): Date {
-  const copy = new Date(date);
-  copy.setHours(23, 59, 59, 999);
-  return copy;
-}
-
 /**
  * La semana arranca el lunes, que es como se cuenta el negocio en Colombia.
+ *
+ * Todos los cortes se hacen con el reloj de Medellín, no con el del servidor:
+ * ver `@/lib/dia`.
  */
 export function resolvePeriod(
   period: PeriodId,
@@ -32,33 +32,33 @@ export function resolvePeriod(
 ): Range {
   switch (period) {
     case "ayer": {
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      return { from: startOfDay(yesterday), to: endOfDay(yesterday) };
+      const ayer = sumarDias(now, -1);
+      return { from: inicioDelDia(ayer), to: finDelDia(ayer) };
     }
     case "semana": {
-      const monday = new Date(now);
-      const weekday = (monday.getDay() + 6) % 7;
-      monday.setDate(monday.getDate() - weekday);
-      return { from: startOfDay(monday), to: endOfDay(now) };
+      const lunes = sumarDias(now, -diaDeLaSemana(now));
+      return { from: inicioDelDia(lunes), to: finDelDia(now) };
     }
     case "mes": {
-      const first = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { from: startOfDay(first), to: endOfDay(now) };
+      return { from: inicioDelMes(now), to: finDelDia(now) };
     }
     case "personalizado": {
-      const from = custom?.from ? new Date(custom.from) : startOfDay(now);
-      const to = custom?.to ? new Date(custom.to) : now;
+      // Las fechas del formulario vienen como "2026-09-11", que `new Date`
+      // interpreta como medianoche UTC: en Medellín eso es el día anterior a
+      // las 7 p.m. Se leen como día de calendario y se anclan a la zona.
+      const from = fechaDelFormulario(custom?.from) ?? inicioDelDia(now);
+      const to = fechaDelFormulario(custom?.to, "fin") ?? finDelDia(now);
       if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-        return { from: startOfDay(now), to: endOfDay(now) };
+        return { from: inicioDelDia(now), to: finDelDia(now) };
       }
-      return { from: startOfDay(from), to: endOfDay(to) };
+      return { from, to };
     }
     default:
-      return { from: startOfDay(now), to: endOfDay(now) };
+      return { from: inicioDelDia(now), to: finDelDia(now) };
   }
 }
 
 export function isPeriodId(value: string | undefined): value is PeriodId {
   return PERIODS.some((period) => period.id === value);
 }
+
